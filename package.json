@@ -1,0 +1,27 @@
+{
+  "name": "dvp-articleservice",
+  "version": "1.0.0",
+  "description": "Article service for facetone wiki",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DuoSoftware/DVP-ArticleService.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/DuoSoftware/DVP-ArticleService/issues"
+  },
+  "homepage": "https://github.com/DuoSoftware/DVP-ArticleService#readme",
+  "dependencies": {
+    "config": "^3.0.1",
+    "dvp-common-lite": "^1.0.1",
+    "dvp-mongomodels": "^5.3.1",
+    "restify": "^8.1.0",
+    "restify-cors-middleware": "^1.1.1",
+    "restify-jwt": "^0.4.0"
+  }
+}
