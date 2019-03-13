@@ -1,0 +1,957 @@
+const logger = require('dvp-common-lite/LogHandler/CommonLogHandler').logger;
+const messageFormatter = require('dvp-common-lite/CommonMessageGenerator/ClientMessageJsonFormatter');
+
+const Article = require('dvp-mongomodels/model/Articles/Article').Article;
+const ArticleCategory = require('dvp-mongomodels/model/Articles/Category').ArticleCategory;
+const ArticleFolder = require('dvp-mongomodels/model/Articles/Folder').ArticleFolder;
+const ArticleComment = require('dvp-mongomodels/model/Articles/Comment').ArticleComment;
+const ArticleTag = require('dvp-mongomodels/model/Articles/Tag').ArticleTag;
+const ArticleVote = require('dvp-mongomodels/model/Articles/Vote').ArticleVote;
+const UserAccount = require('dvp-mongomodels/model/UserAccount');
+
+
+module.exports.ArticleService = class ArticleService {
+
+    async CreateArticle(req, res) {
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+            const userAccount = await UserAccount.findOne({user: req.user.iss, company: company, tenant: tenant});
+
+            let article = Article({
+                created_at: Date.now(),
+                updated_at: Date.now(),
+                businessUnit: req.body.businessUnit,
+                company: company,
+                tenant: tenant,
+                title: req.body.title,
+                description: req.body.description,
+                document: req.body.document,
+                tags: req.body.tags,
+                published: false,
+                author: userAccount.userref.id
+
+            });
+
+            const _article = await article.save();
+
+            logger.log(`Article saved and setting article to category ${req.body.folder}`);
+
+            if(req.body.folder){
+
+                let _folder = await ArticleFolder.update({
+                    company: company,
+                    tenant: tenant,
+                    _id: req.body.folder
+                },{$addToSet:{articles: _article._id}})
+            }
+
+            jsonString = messageFormatter.FormatMessage(undefined, "Article saved successfully", true, _article);
+            res.end(jsonString);
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Create Article Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    }
+
+    async CreateCategory(req, res) {
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+            const userAccount = await UserAccount.findOne({user: req.user.iss, company: company, tenant: tenant});
+
+            let category = ArticleCategory({
+                created_at: Date.now(),
+                updated_at: Date.now(),
+                businessUnit: req.body.businessUnit,
+                company: company,
+                tenant: tenant,
+                title: req.body.title,
+                description: req.body.description,
+                allow_business_units: req.body.allow_business_units,
+                author: userAccount.userref.id,
+                folders: []
+
+            });
+
+            const _category = await category.save();
+
+            jsonString = messageFormatter.FormatMessage(undefined, "Folder saved successfully", true, _category);
+            res.end(jsonString);
+
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Create Category Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    }
+
+    async CreateFolder(req, res) {
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+            const userAccount = await UserAccount.findOne({user: req.user.iss, company: company, tenant: tenant});
+
+
+            let folder = ArticleFolder({
+                created_at: Date.now(),
+                updated_at: Date.now(),
+                businessUnit: req.body.businessUnit,
+                company: company,
+                tenant: tenant,
+                title: req.body.title,
+                description: req.body.description,
+                author: userAccount.userref.id,
+                allow_groups: req.body.allow_groups,
+                articles:[]
+
+            });
+
+            const _folder = await folder.save();
+            logger.log(`Folder saved and setting folder to category ${req.body.category}`);
+
+            if(req.body.category){
+
+                let _cat = await ArticleCategory.update({
+                    company: company,
+                    tenant: tenant,
+                    _id: req.body.category
+                },{$addToSet:{folders: _folder._id}})
+            }
+
+
+            jsonString = messageFormatter.FormatMessage(undefined, "Folder saved successfully", true, _folder);
+            res.end(jsonString);
+
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Create Folder Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    }
+
+    async AddFolderToCategory(req,res){
+
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+
+            const _folder = await ArticleFolder.findOne({_id: req.params.folderid, company: company, tenant: tenant});
+
+
+            if(_folder && req.params.catid){
+
+                logger.log(`Folder found and setting folder to category ${req.params.folderid}`);
+                let _cat = await ArticleCategory.update({
+                    company: company,
+                    tenant: tenant,
+                    _id: req.params.catid
+                },{$addToSet:{folders: _folder.id}})
+
+                jsonString = messageFormatter.FormatMessage(undefined, "Folder set to category successfully", true, _cat);
+            }else{
+                logger.error(`Folder not found and setting folder to category ${req.params.folderid}`);
+            }
+
+
+
+            res.end(jsonString);
+
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Folder set to category Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+
+    }
+
+    async AddArticleToFolder(req,res){
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+
+            const _article = await Article.findOne({_id: req.params.articleid, company: company, tenant: tenant});
+
+
+            if(_article && req.params.folderid){
+
+                logger.log(`Article found and setting article to folder ${req.params.folderid}`);
+                let _folder = await ArticleFolder.update({
+                    company: company,
+                    tenant: tenant,
+                    _id: req.params.folderid
+                },{$addToSet:{articles: _article.id}})
+                jsonString = messageFormatter.FormatMessage(undefined, "Article set to Folder successfully", true, _folder);
+            }else{
+                logger.error(`Folder not found and setting folder to category ${req.params.folderid}`);
+            }
+
+
+
+            res.end(jsonString);
+
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Article set to Folder Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    }
+
+    async AddBuToCategory(req,res){
+
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+
+            logger.log(`BU's found and setting bu to category ${req.params.allow_business_units}`);
+            let buList = [];
+
+            if(req.params && req.params.allow_business_units) {
+                if (Array.isArray(req.params.allow_business_units)) {
+                    buList = req.params.allow_business_units;
+                } else {
+                    buList.push(req.params.allow_business_units);
+                }
+            }
+
+            let _cat = await ArticleCategory.update({
+                company: company,
+                tenant: tenant,
+                _id: req.params.catid
+            }, {
+                $addToSet:
+                    {
+                        allow_business_units: {
+                            $each: buList
+                        }
+                    }
+            });
+
+            jsonString = messageFormatter.FormatMessage(undefined, "BUs set to category successfully", true, _cat);
+            res.end(jsonString);
+
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "BUs set to category Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+
+    }
+
+    async AddGroupToFolder(req,res){
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+
+            let groupList = [];
+
+            if(req.params.allow_groups) {
+                if (Array.isArray(req.params.allow_groups)) {
+                    groupList = req.params.allow_groups;
+                } else {
+                    groupList = [req.params.allow_groups];
+                }
+            }
+
+            logger.log(`Groups found and setting group to folder ${req.params.allow_groups}`);
+            let _folder = await ArticleFolder.update({
+                company: company,
+                tenant: tenant,
+                _id: req.params.folderid
+            }, {
+                $addToSet: {
+                    allow_groups: {
+                        $each :groupList.id
+                    }
+                }
+            });
+            jsonString = messageFormatter.FormatMessage(undefined, "Group set to Folder successfully", true, _folder);
+            res.end(jsonString);
+
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Group set to Folder Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    }
+
+    async AddCommentToArticle(req,res){
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+            const userAccount = await UserAccount.findOne({user: req.user.iss, company: company, tenant: tenant});
+
+
+            let comment = ArticleComment({
+                created_at: Date.now(),
+                updated_at: Date.now(),
+                company: company,
+                tenant: tenant,
+                comment: req.body.comment,
+                author: userAccount.userref.id,
+
+            });
+
+            const _comment = await comment.save();
+            logger.log(`Comment saved and setting comment to article ${req.params.articleid}`);
+
+            if(req.params.articleid){
+
+                let _cat = await Article.update({
+                    company: company,
+                    tenant: tenant,
+                    _id: req.params.articleid
+                },{$addToSet:{comments: _comment._id}})
+            }
+
+
+            jsonString = messageFormatter.FormatMessage(undefined, "Comment saved successfully", true, _comment);
+            res.end(jsonString);
+
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Comment Folder Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    }
+
+    async AddVoteToArticle(req,res){
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+            const userAccount = await UserAccount.findOne({user: req.user.iss, company: company, tenant: tenant});
+
+
+            let vote = ArticleVote({
+                created_at: Date.now(),
+                company: company,
+                tenant: tenant,
+                vote: req.body.vote,
+                author: userAccount.userref.id,
+
+            });
+
+            const _vote = await vote.save();
+            logger.log(`Comment saved and setting vote to article ${req.params.articleid}`);
+
+            if(req.params.articleid){
+
+                let _cat = await Article.update({
+                    company: company,
+                    tenant: tenant,
+                    _id: req.params.articleid
+                },{$addToSet:{votes: _vote._id}})
+            }
+
+
+            jsonString = messageFormatter.FormatMessage(undefined, "Vote saved successfully", true, _vote);
+            res.end(jsonString);
+
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Vote save Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    }
+
+    async AddTagToArticle(req,res){
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+
+
+            let _tag = await ArticleTag.findOne({tag:  req.body.tag, company: company, tenant: tenant});
+
+            if(!_tag) {
+                let tag = ArticleTag({
+                    created_at: Date.now(),
+                    company: company,
+                    tenant: tenant,
+                    tag: req.body.tag,
+                });
+
+                _tag = await tag.save();
+                logger.log(`Tag saved and setting tag to article ${req.params.articleid}`);
+            }else{
+
+                logger.log(`Tag found in database`);
+            }
+
+            if(req.params.articleid){
+
+                let _cat = await Article.update({
+                    company: company,
+                    tenant: tenant,
+                    _id: req.params.articleid
+                },{$addToSet:{tags: _tag}})
+            }
+
+
+            jsonString = messageFormatter.FormatMessage(undefined, "Tag saved successfully", true, _tag);
+            res.end(jsonString);
+
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Tag save Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    }
+
+    async AddSearchTagToArticle(req,res){
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+
+            let _tag = [];
+
+            if(req.body && req.body.tags){
+                if(Array.isArray(_tag)){
+
+                    _tag = req.body.tags;
+                }else{
+
+                    _tag.add(req.body.tags);
+                }
+            }
+
+
+            if(req.params.articleid) {
+
+                let _cat = await Article.update({
+                    company: company,
+                    tenant: tenant,
+                    _id: req.params.articleid
+                }, {
+                    $addToSet: {
+                        'search.keywords': {'$each' :_tag}
+                    }
+                })
+            }
+
+            jsonString = messageFormatter.FormatMessage(undefined, "Tag saved successfully", true, _tag);
+            res.end(jsonString);
+
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Tag save Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    }
+
+    async UpdateArticle(req, res) {
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+
+            let articleInstance = {
+
+                updated_at: Date.now()
+            };
+
+            if(req.body.title) {
+
+                articleInstance.title = req.body.title;
+            }
+            if(req.body.description){
+
+                articleInstance.description = req.body.description;
+            }
+            if(req.body.document){
+
+                articleInstance.document = req.body.document;
+            }
+
+            let article = await Article.findOneAndUpdate({
+                _id: req.params.id,
+                company: company,
+                tenant: tenant
+            },articleInstance,{new: true});
+
+            jsonString = messageFormatter.FormatMessage(undefined, "Article saved successfully", true, article);
+            res.end(jsonString);
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Create Article Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    }
+
+    async UpdateCategory(req, res) {
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+
+            let categoryInstance = {
+                updated_at: Date.now()
+            }
+
+            if(req.body.title){
+                categoryInstance.title = req.body.title;
+            }
+
+            if(req.body.description){
+                categoryInstance.description = req.body.description;
+            }
+
+            let category = await ArticleCategory.findOneAndUpdate({
+                _id: req.params.id,
+                company: company,
+                tenant: tenant
+            }, categoryInstance,{new: true} );
+
+
+            jsonString = messageFormatter.FormatMessage(undefined, "Category saved successfully", true, category);
+            res.end(jsonString);
+
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Create Category Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    }
+
+    async UpdateFolder(req, res) {
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+            let folderInstance = {
+                updated_at: Date.now()
+            };
+
+            if(req.body.title){
+                folderInstance.title = req.body.title;
+            }
+
+            if(req.body.description){
+                folderInstance.description = req.body.description;
+            }
+
+            let folder = await ArticleFolder.findOneAndUpdate({
+                    _id: req.params.id,
+                    company: company,
+                    tenant: tenant
+                }, folderInstance,{new: true});
+
+
+            jsonString = messageFormatter.FormatMessage(undefined, "Folder saved successfully", true, folder);
+            res.end(jsonString);
+
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Create Folder Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    }
+
+    async GetCategories(req, res){
+
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+            const articleCategory = await ArticleCategory.find({company: company, tenant: tenant})
+                .populate('author', 'firstname lastname username avatar');
+            jsonString = messageFormatter.FormatMessage(undefined, "Categories retrieved successfully", true, articleCategory);
+            res.end(jsonString);
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Categories retrieve Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    };
+
+    async GetCategory(req, res){
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let id = req.params.id;
+        let jsonString;
+
+        const msg = req.body;
+        try {
+            const articleCategory = await ArticleCategory.findOne({_id: id, company: company, tenant: tenant});
+            jsonString = messageFormatter.FormatMessage(undefined, "Category retrieved successfully", true, articleCategory);
+            res.end(jsonString);
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Category retrieve Failed", false, undefined);
+            res.end(jsonString);
+        }
+    };
+
+    async GetFullCategory(req, res){
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let id = req.params.id;
+        let jsonString;
+
+        const msg = req.body;
+        try {
+            const articleCategory = await ArticleCategory.findOne({_id: id, company: company, tenant: tenant})
+                .populate({
+                    path : 'folders',
+                    model: ArticleFolder,
+                    populate: {
+                        path: 'author',
+                        model: 'User',
+                        select: 'firstname lastname username avatar'
+                    }
+                })
+                .populate('author','firstname lastname username avatar');
+            jsonString = messageFormatter.FormatMessage(undefined, "Category retrieved successfully", true, articleCategory);
+            res.end(jsonString);
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Category retrieve Failed", false, undefined);
+            res.end(jsonString);
+        }
+    };
+
+    async GetFolders(req, res){
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+            const articleFolder = await ArticleFolder.find({company: company, tenant: tenant}).populate('author', 'firstname lastname username avatar');
+            jsonString = messageFormatter.FormatMessage(undefined, "Folders retrieved successfully", true, articleFolder);
+            res.end(jsonString);
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Folders retrieve Failed", false, undefined);
+            res.end(jsonString);
+        }
+    };
+
+    async GetFolder(req, res){
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let id = req.params.id;
+        let jsonString;
+
+        const msg = req.body;
+        try {
+            const articleFolder = await ArticleFolder.findOne({_id: id, company: company, tenant: tenant});
+            jsonString = messageFormatter.FormatMessage(undefined, "Folder retrieved successfully", true, articleFolder);
+            res.end(jsonString);
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Folder retrieve Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    };
+
+    async GetFullFolder(req, res){
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let id = req.params.id;
+        let jsonString;
+
+        const msg = req.body;
+        try {
+            const articleFolder = await ArticleFolder.findOne({_id: id, company: company, tenant: tenant})
+                .populate({
+                    path : 'articles',
+                    model: Article,
+                    select: '-document',
+                    populate: {
+                        path: 'author',
+                        model: 'User',
+                        select: 'title lastname username avatar'
+                    }
+                })
+                .populate('author', 'firstname lastname username avatar');
+            jsonString = messageFormatter.FormatMessage(undefined, "Folder retrieved successfully", true, articleFolder);
+            res.end(jsonString);
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Folder retrieve Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    };
+
+    async GetArticles(req, res){
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+            const article = await Article.find({company: company, tenant: tenant}, '-tags -search -company -tenant -businessUnit').populate('author', 'firstname lastname username avatar');
+            jsonString = messageFormatter.FormatMessage(undefined, "Articles retrieved successfully", true, article);
+            res.end(jsonString);
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Articles retrieve Failed", false, undefined);
+            res.end(jsonString);
+        }
+    };
+
+    async GetArticle(req, res){
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let id = req.params.id;
+        let jsonString;
+
+        const msg = req.body;
+        try {
+
+            const article = await Article.find({_id: id, company: company, tenant: tenant});
+            jsonString = messageFormatter.FormatMessage(undefined, "Article retrieved successfully", true, article);
+            res.end(jsonString);
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Article retrieve Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    };
+
+    async GetFullArticle(req, res){
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let id = req.params.id;
+        let jsonString;
+
+        const msg = req.body;
+        try {
+
+            const article = await Article.find({_id: id, company: company, tenant: tenant})
+                .populate('author', 'firstname lastname username avatar')
+                .populate({
+                    path : 'comments',
+                    model: ArticleComment,
+                    populate: {
+                        path: 'author',
+                        model: 'User',
+                        select: 'firstname lastname username avatar'
+                    }
+                })
+                .populate({
+                    path : 'votes',
+                    model: ArticleVote,
+                    populate: {
+                        path: 'author',
+                        model: 'User',
+                        select: 'firstname lastname username avatar'
+                    }
+                });
+            jsonString = messageFormatter.FormatMessage(undefined, "Article retrieved successfully", true, article);
+            res.end(jsonString);
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Article retrieve Failed", false, undefined);
+            res.end(jsonString);
+        }
+    };
+
+    async DisableArticle(req, res) {
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+
+            let articleInstance = {
+
+                updated_at: Date.now(),
+                enabled: req.params.enabled
+            };
+
+
+
+            let article = await Article.findOneAndUpdate({
+                _id: req.params.id,
+                company: company,
+                tenant: tenant
+            },articleInstance,{new: true});
+
+            jsonString = messageFormatter.FormatMessage(undefined, "Article saved successfully", true, article);
+            res.end(jsonString);
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Create Article Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    }
+
+    async DisableCategory(req, res) {
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+
+            let categoryInstance = {
+                updated_at: Date.now(),
+                enabled: req.params.enabled
+            }
+
+            let category = await ArticleCategory.findOneAndUpdate({
+                _id: req.params.id,
+                company: company,
+                tenant: tenant
+            }, categoryInstance,{new: true} );
+
+
+            jsonString = messageFormatter.FormatMessage(undefined, "Category saved successfully", true, category);
+            res.end(jsonString);
+
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Create Category Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    }
+
+    async DisableFolder(req, res) {
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+            let folderInstance = {
+                updated_at: Date.now(),
+                enabled: req.params.enabled
+            };
+
+
+
+            let folder = await ArticleFolder.findOneAndUpdate({
+                _id: req.params.id,
+                company: company,
+                tenant: tenant
+            }, folderInstance,{new: true});
+
+
+            jsonString = messageFormatter.FormatMessage(undefined, "Folder saved successfully", true, folder);
+            res.end(jsonString);
+
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Create Folder Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    }
+
+}
