@@ -43,7 +43,7 @@ module.exports.ArticleService = class ArticleService {
 
             if(req.body.folder){
 
-                let _folder = await ArticleFolder.update({
+                let _folder = await ArticleFolder.findOneAndUpdate({
                     company: company,
                     tenant: tenant,
                     _id: req.body.folder
@@ -129,7 +129,7 @@ module.exports.ArticleService = class ArticleService {
 
             if(req.body.category){
 
-                let _cat = await ArticleCategory.update({
+                let _cat = await ArticleCategory.findOneAndUpdate({
                     company: company,
                     tenant: tenant,
                     _id: req.body.category
@@ -165,7 +165,7 @@ module.exports.ArticleService = class ArticleService {
             if(_folder && req.params.catid){
 
                 logger.log(`Folder found and setting folder to category ${req.params.folderid}`);
-                let _cat = await ArticleCategory.update({
+                let _cat = await ArticleCategory.findOneAndUpdate({
                     company: company,
                     tenant: tenant,
                     _id: req.params.catid
@@ -205,7 +205,7 @@ module.exports.ArticleService = class ArticleService {
             if(_article && req.params.folderid){
 
                 logger.log(`Article found and setting article to folder ${req.params.folderid}`);
-                let _folder = await ArticleFolder.update({
+                let _folder = await ArticleFolder.findOneAndUpdate({
                     company: company,
                     tenant: tenant,
                     _id: req.params.folderid
@@ -249,7 +249,7 @@ module.exports.ArticleService = class ArticleService {
                 }
             }
 
-            let _cat = await ArticleCategory.update({
+            let _cat = await ArticleCategory.findOneAndUpdate({
                 company: company,
                 tenant: tenant,
                 _id: req.params.catid
@@ -295,7 +295,7 @@ module.exports.ArticleService = class ArticleService {
             }
 
             logger.log(`Groups found and setting group to folder ${req.params.allow_groups}`);
-            let _folder = await ArticleFolder.update({
+            let _folder = await ArticleFolder.findOneAndUpdate({
                 company: company,
                 tenant: tenant,
                 _id: req.params.folderid
@@ -344,7 +344,7 @@ module.exports.ArticleService = class ArticleService {
 
             if(req.params.articleid){
 
-                let _cat = await Article.update({
+                let _cat = await Article.findOneAndUpdate({
                     company: company,
                     tenant: tenant,
                     _id: req.params.articleid
@@ -389,7 +389,7 @@ module.exports.ArticleService = class ArticleService {
 
             if(req.params.articleid){
 
-                let _cat = await Article.update({
+                let _cat = await Article.findOneAndUpdate({
                     company: company,
                     tenant: tenant,
                     _id: req.params.articleid
@@ -438,7 +438,7 @@ module.exports.ArticleService = class ArticleService {
 
             if(req.params.articleid){
 
-                let _cat = await Article.update({
+                let _cat = await Article.findOneAndUpdate({
                     company: company,
                     tenant: tenant,
                     _id: req.params.articleid
@@ -453,6 +453,44 @@ module.exports.ArticleService = class ArticleService {
         }catch(ex){
 
             jsonString = messageFormatter.FormatMessage(ex, "Tag save Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    }
+
+    async RemoveTagsFromArticle(req,res){
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const _tag = req.body.tag;
+        try {
+
+
+            if(req.params.articleid){
+
+                let _cat = await Article.findOneAndUpdate({
+                    company: company,
+                    tenant: tenant,
+                    _id: req.params.articleid
+                },{
+                    $pull:{
+                        tags: {
+                            tag: _tag
+                        }
+                    }
+                });
+            }
+
+
+            jsonString = messageFormatter.FormatMessage(undefined, "Tag removed successfully", true, _tag);
+            res.end(jsonString);
+
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Tag remove Failed", false, undefined);
             res.end(jsonString);
         }
 
@@ -482,13 +520,60 @@ module.exports.ArticleService = class ArticleService {
 
             if(req.params.articleid) {
 
-                let _cat = await Article.update({
+                let _cat = await Article.findOneAndUpdate({
                     company: company,
                     tenant: tenant,
                     _id: req.params.articleid
                 }, {
                     $addToSet: {
                         'search.keywords': {'$each' :_tag}
+                    }
+                })
+            }
+
+            jsonString = messageFormatter.FormatMessage(undefined, "Tag saved successfully", true, _tag);
+            res.end(jsonString);
+
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Tag save Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    }
+
+    async RemoveSearchTagFromArticle(req,res){
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+
+            let _tag = [];
+
+            if(req.body && req.body.tags){
+                if(Array.isArray(_tag)){
+
+                    _tag = req.body.tags;
+                }else{
+
+                    _tag.add(req.body.tags);
+                }
+            }
+
+
+            if(req.params.articleid) {
+
+                let _cat = await Article.findOneAndUpdate({
+                    company: company,
+                    tenant: tenant,
+                    _id: req.params.articleid
+                }, {
+                    $pull: {
+                        'search.keywords': {'$in' :_tag}
                     }
                 })
             }
