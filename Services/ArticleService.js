@@ -508,12 +508,12 @@ module.exports.ArticleService = class ArticleService {
             let _tag = [];
 
             if(req.body && req.body.tags){
-                if(Array.isArray(_tag)){
+                if(Array.isArray(req.body.tags)){
 
                     _tag = req.body.tags;
                 }else{
 
-                    _tag.add(req.body.tags);
+                    _tag.push(req.body.tags);
                 }
             }
 
@@ -543,6 +543,40 @@ module.exports.ArticleService = class ArticleService {
 
     }
 
+    async AddSearchMetaToArticle(req,res){
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body.meta;
+        try {
+
+            if(req.params.articleid  && req.body.meta) {
+
+                let _cat = await Article.findOneAndUpdate({
+                    company: company,
+                    tenant: tenant,
+                    _id: req.params.articleid
+                }, {
+
+                        'search.meta': req.body.meta
+
+                })
+            }
+
+            jsonString = messageFormatter.FormatMessage(undefined, "Tag saved successfully", true, msg);
+            res.end(jsonString);
+
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Tag save Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    }
+
     async RemoveSearchTagFromArticle(req,res){
 
         let company = parseInt(req.user.company);
@@ -555,12 +589,12 @@ module.exports.ArticleService = class ArticleService {
             let _tag = [];
 
             if(req.body && req.body.tags){
-                if(Array.isArray(_tag)){
+                if(Array.isArray(req.body.tags)){
 
                     _tag = req.body.tags;
                 }else{
 
-                    _tag.add(req.body.tags);
+                    _tag.push(req.body.tags);
                 }
             }
 
@@ -735,6 +769,28 @@ module.exports.ArticleService = class ArticleService {
 
     };
 
+    async GetTags(req, res){
+
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+            const articleCategory = await ArticleTag.find({company: company, tenant: tenant})
+                .populate('author', 'firstname lastname username avatar');
+            jsonString = messageFormatter.FormatMessage(undefined, "Categories retrieved successfully", true, articleCategory);
+            res.end(jsonString);
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Categories retrieve Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    };
+
     async GetCategory(req, res){
 
         let company = parseInt(req.user.company);
@@ -863,9 +919,55 @@ module.exports.ArticleService = class ArticleService {
         let tenant = parseInt(req.user.tenant);
         let jsonString;
 
+        const page = parseInt(req.params.page);
+        const   size = parseInt(req.params.size);
+        const   skip = page > 0 ? ((page - 1) * size) : 0;
+
+
         const msg = req.body;
         try {
-            const article = await Article.find({company: company, tenant: tenant}, '-tags -search -company -tenant -businessUnit').populate('author', 'firstname lastname username avatar');
+            const article = await Article.find({company: company, tenant: tenant}, '-tags -search -company -tenant -businessUnit')
+                .populate('author', 'firstname lastname username avatar').skip(skip)
+                .limit(size)
+                .sort({created_at: -1});
+            jsonString = messageFormatter.FormatMessage(undefined, "Articles retrieved successfully", true, article);
+            res.end(jsonString);
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Articles retrieve Failed", false, undefined);
+            res.end(jsonString);
+        }
+    };
+
+    async GetArticlesByTags(req, res){
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.params;
+        try {
+
+            let _tag = [];
+
+            if(req.params && req.params.tags){
+                if(Array.isArray(req.params.tags)){
+
+                    _tag = req.params.tags;
+                }else{
+
+                    _tag.push(req.params.tags);
+                }
+            }
+
+            const article = await Article.find({
+                company: company,
+                tenant: tenant,
+                'tags.tag': {
+                    $in: _tag
+                }
+            }, '-tags -search -company -tenant -businessUnit').populate('author', 'firstname lastname username avatar');
             jsonString = messageFormatter.FormatMessage(undefined, "Articles retrieved successfully", true, article);
             res.end(jsonString);
 
@@ -886,7 +988,35 @@ module.exports.ArticleService = class ArticleService {
         const msg = req.body;
         try {
 
-            const article = await Article.find({_id: id, company: company, tenant: tenant});
+            const article = await Article.findOne({_id: id, company: company, tenant: tenant});
+            jsonString = messageFormatter.FormatMessage(undefined, "Article retrieved successfully", true, article);
+            res.end(jsonString);
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Article retrieve Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    };
+
+    async SearchArticle(req, res){
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+
+            const article = await Article.find(
+                {
+                    $text: {$search: req.params.text},
+                    company: company,
+                    tenant: tenant
+                }
+            ).limit(10);
+
             jsonString = messageFormatter.FormatMessage(undefined, "Article retrieved successfully", true, article);
             res.end(jsonString);
 

@@ -51,6 +51,7 @@ server.put('/DVP/API/:version/Article/:articleid/Comment',authorization({resourc
 server.put('/DVP/API/:version/Article/:articleid/Vote',authorization({resource:"article", action:"write"}), articleService.AddVoteToArticle);
 server.put('/DVP/API/:version/Article/:articleid/Tag',authorization({resource:"article", action:"write"}), articleService.AddTagToArticle);
 server.put('/DVP/API/:version/Article/:articleid/SearchTag',authorization({resource:"article", action:"write"}), articleService.AddSearchTagToArticle);
+server.put('/DVP/API/:version/Article/:articleid/SearchMeta',authorization({resource:"article", action:"write"}), articleService.AddSearchMetaToArticle);
 
 
 server.del('/DVP/API/:version/Article/:articleid/Tag',authorization({resource:"article", action:"delete"}), articleService.RemoveTagsFromArticle);
@@ -66,7 +67,7 @@ server.put('/DVP/API/:version/Folder/:id/Enable/:enabled',authorization({resourc
 server.put('/DVP/API/:version/Article/:id/Enable/:enabled',authorization({resource:"article", action:"delete"}), articleService.DisableArticle);
 
 //////////////////////////////////////////get methods/////////////////////////////////////////////////////////////////////////////
-
+server.get('/DVP/API/:version/Tags',authorization({resource:"article", action:"read"}), articleService.GetTags);
 server.get('/DVP/API/:version/Categories',authorization({resource:"article", action:"read"}), articleService.GetCategories);
 server.get('/DVP/API/:version/Category/:id',authorization({resource:"article", action:"read"}), articleService.GetCategory);
 server.get('/DVP/API/:version/FullCategory/:id',authorization({resource:"article", action:"read"}), articleService.GetFullCategory);
@@ -74,7 +75,9 @@ server.get('/DVP/API/:version/Folders',authorization({resource:"article", action
 server.get('/DVP/API/:version/Folder/:id',authorization({resource:"article", action:"read"}), articleService.GetFolder);
 server.get('/DVP/API/:version/FullFolder/:id',authorization({resource:"article", action:"read"}), articleService.GetFullFolder);
 server.get('/DVP/API/:version/Articles',authorization({resource:"article", action:"read"}), articleService.GetArticles);
+server.get('/DVP/API/:version/Articles/ByTag',authorization({resource:"article", action:"read"}), articleService.GetArticlesByTags);
 server.get('/DVP/API/:version/Article/:id',authorization({resource:"article", action:"read"}), articleService.GetArticle);
+server.get('/DVP/API/:version/SearchArticle/:text',authorization({resource:"article", action:"read"}), articleService.SearchArticle);
 server.get('/DVP/API/:version/FullArticle/:id',authorization({resource:"article", action:"read"}), articleService.GetFullArticle);
 
 
