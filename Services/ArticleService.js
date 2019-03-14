@@ -22,6 +22,33 @@ module.exports.ArticleService = class ArticleService {
         try {
             const userAccount = await UserAccount.findOne({user: req.user.iss, company: company, tenant: tenant});
 
+            let tagArray = [];
+            if(req.body.tags && Array.isArray(req.body.tags)){
+
+                for(let _tagVal of req.body.tags) {
+                    let _tag = await ArticleTag.findOne({tag: _tagVal, company: company, tenant: tenant});
+
+                    if (!_tag) {
+                        let tag = ArticleTag({
+                            created_at: Date.now(),
+                            company: company,
+                            tenant: tenant,
+                            tag: _tagVal,
+                        });
+
+                        _tag = await tag.save();
+                        logger.log(`Tag saved and setting tag to article ${req.params.articleid}`);
+                    } else {
+
+                        logger.log(`Tag found in database`);
+                    }
+
+                    tagArray.push(_tag);
+                }
+
+
+            }
+
             let article = Article({
                 created_at: Date.now(),
                 updated_at: Date.now(),
@@ -31,7 +58,7 @@ module.exports.ArticleService = class ArticleService {
                 title: req.body.title,
                 description: req.body.description,
                 document: req.body.document,
-                tags: req.body.tags,
+                tags: tagArray,
                 published: false,
                 author: userAccount.userref.id
 
@@ -926,7 +953,7 @@ module.exports.ArticleService = class ArticleService {
 
         const msg = req.body;
         try {
-            const article = await Article.find({company: company, tenant: tenant}, '-tags -search -company -tenant -businessUnit')
+            const article = await Article.find({company: company, tenant: tenant}, '-search -company -tenant -businessUnit')
                 .populate('author', 'firstname lastname username avatar').skip(skip)
                 .limit(size)
                 .sort({created_at: -1});
