@@ -8,6 +8,8 @@ const ArticleComment = require('dvp-mongomodels/model/Articles/Comment').Article
 const ArticleTag = require('dvp-mongomodels/model/Articles/Tag').ArticleTag;
 const ArticleVote = require('dvp-mongomodels/model/Articles/Vote').ArticleVote;
 const UserAccount = require('dvp-mongomodels/model/UserAccount');
+const UserGroup = require('dvp-mongomodels/model/UserGroup');
+const BusinessUnit = require('dvp-mongomodels/model/BusinessUnit').BusinessUnit;
 
 
 module.exports.ArticleService = class ArticleService {
@@ -60,7 +62,7 @@ module.exports.ArticleService = class ArticleService {
                 document: req.body.document,
                 tags: tagArray,
                 published: false,
-                author: userAccount.userref.id
+                author: userAccount.userref
 
             });
 
@@ -107,7 +109,7 @@ module.exports.ArticleService = class ArticleService {
                 title: req.body.title,
                 description: req.body.description,
                 allow_business_units: req.body.allow_business_units,
-                author: userAccount.userref.id,
+                author: userAccount.userref,
                 folders: []
 
             });
@@ -145,7 +147,7 @@ module.exports.ArticleService = class ArticleService {
                 tenant: tenant,
                 title: req.body.title,
                 description: req.body.description,
-                author: userAccount.userref.id,
+                author: userAccount.userref,
                 allow_groups: req.body.allow_groups,
                 articles:[]
 
@@ -329,7 +331,7 @@ module.exports.ArticleService = class ArticleService {
             }, {
                 $addToSet: {
                     allow_groups: {
-                        $each :groupList.id
+                        $each :groupList
                     }
                 }
             });
@@ -342,6 +344,96 @@ module.exports.ArticleService = class ArticleService {
             jsonString = messageFormatter.FormatMessage(ex, "Group set to Folder Failed", false, undefined);
             res.end(jsonString);
         }
+
+    }
+
+    async RemoveGroupFromFolder(req,res){
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+
+            let groupList = [];
+
+            if(req.params.allow_groups) {
+                if (Array.isArray(req.params.allow_groups)) {
+                    groupList = req.params.allow_groups;
+                } else {
+                    groupList = [req.params.allow_groups];
+                }
+            }
+
+            logger.log(`Groups found and setting group to folder ${req.params.allow_groups}`);
+            let _folder = await ArticleFolder.findOneAndUpdate({
+                company: company,
+                tenant: tenant,
+                _id: req.params.folderid
+            }, {
+                $pull: {
+                    allow_groups: {
+                        $in :groupList
+                    }
+                }
+            });
+            jsonString = messageFormatter.FormatMessage(undefined, "Group set to Folder successfully", true, _folder);
+            res.end(jsonString);
+
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Group set to Folder Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    }
+
+    async RemoveBuFromCategory(req,res){
+
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+
+            logger.log(`BU's found and setting bu to category ${req.params.allow_business_units}`);
+            let buList = [];
+
+            if(req.params && req.params.allow_business_units) {
+                if (Array.isArray(req.params.allow_business_units)) {
+                    buList = req.params.allow_business_units;
+                } else {
+                    buList.push(req.params.allow_business_units);
+                }
+            }
+
+            let _cat = await ArticleCategory.findOneAndUpdate({
+                company: company,
+                tenant: tenant,
+                _id: req.params.catid
+            }, {
+                $pull:
+                    {
+                        allow_business_units: {
+                            $in: buList
+                        }
+                    }
+            });
+
+            jsonString = messageFormatter.FormatMessage(undefined, "BUs set to category successfully", true, _cat);
+            res.end(jsonString);
+
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "BUs set to category Failed", false, undefined);
+            res.end(jsonString);
+        }
+
 
     }
 
@@ -362,7 +454,7 @@ module.exports.ArticleService = class ArticleService {
                 company: company,
                 tenant: tenant,
                 comment: req.body.comment,
-                author: userAccount.userref.id,
+                author: userAccount.userref,
 
             });
 
@@ -407,7 +499,7 @@ module.exports.ArticleService = class ArticleService {
                 company: company,
                 tenant: tenant,
                 vote: req.body.vote,
-                author: userAccount.userref.id,
+                author: userAccount.userref,
 
             });
 
@@ -849,7 +941,7 @@ module.exports.ArticleService = class ArticleService {
         try {
             const articleCategory = await ArticleCategory.findOne({_id: id, company: company, tenant: tenant})
                 .populate({
-                    path : 'folders',
+                    path: 'folders',
                     model: ArticleFolder,
                     populate: {
                         path: 'author',
@@ -857,7 +949,8 @@ module.exports.ArticleService = class ArticleService {
                         select: 'firstname lastname username avatar'
                     }
                 })
-                .populate('author','firstname lastname username avatar');
+                .populate('author', 'firstname lastname username avatar')
+                .populate('allow_business_units', 'unitName');
             jsonString = messageFormatter.FormatMessage(undefined, "Category retrieved successfully", true, articleCategory);
             res.end(jsonString);
 
@@ -922,13 +1015,21 @@ module.exports.ArticleService = class ArticleService {
                     path : 'articles',
                     model: Article,
                     select: '-document',
-                    populate: {
+                    populate: [{
                         path: 'author',
                         model: 'User',
                         select: 'title lastname username avatar'
-                    }
+                    },
+                        {
+                            path: 'votes',
+                            model: 'ArticleVote'
+                        }
+                    ]
+
                 })
-                .populate('author', 'firstname lastname username avatar');
+                .populate('author', 'firstname lastname username avatar')
+                .populate('allow_groups','name');
+
             jsonString = messageFormatter.FormatMessage(undefined, "Folder retrieved successfully", true, articleFolder);
             res.end(jsonString);
 
@@ -954,7 +1055,9 @@ module.exports.ArticleService = class ArticleService {
         const msg = req.body;
         try {
             const article = await Article.find({company: company, tenant: tenant}, '-search -company -tenant -businessUnit')
-                .populate('author', 'firstname lastname username avatar').skip(skip)
+                .populate('author', 'firstname lastname username avatar')
+                .populate('votes')
+                .skip(skip)
                 .limit(size)
                 .sort({created_at: -1});
             jsonString = messageFormatter.FormatMessage(undefined, "Articles retrieved successfully", true, article);
@@ -1065,7 +1168,7 @@ module.exports.ArticleService = class ArticleService {
         const msg = req.body;
         try {
 
-            const article = await Article.find({_id: id, company: company, tenant: tenant})
+            const article = await Article.findOne({_id: id, company: company, tenant: tenant})
                 .populate('author', 'firstname lastname username avatar')
                 .populate({
                     path : 'comments',

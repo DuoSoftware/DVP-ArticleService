@@ -23,7 +23,6 @@ const cors = corsMiddleware({
 });
 
 
-
 server.pre(cors.preflight);
 server.use(cors.actual);
 server.use(jwt({secret: secret.Secret}));
@@ -36,6 +35,7 @@ server.use(plugins.bodyParser({
     mapParams: true
 }));
 
+
 //////////////////////////////////////////create methods////////////////////////////////////////////////////////////////////
 server.post('/DVP/API/:version/Category',authorization({resource:"article", action:"write"}), articleService.CreateCategory);
 server.post('/DVP/API/:version/Folder',authorization({resource:"article", action:"write"}), articleService.CreateFolder);
@@ -47,6 +47,8 @@ server.put('/DVP/API/:version/Category/:catid/Folder/:folderid',authorization({r
 server.put('/DVP/API/:version/Category/:catid/BU',authorization({resource:"article", action:"write"}), articleService.AddBuToCategory);
 server.put('/DVP/API/:version/Folder/:folderid/Article/:articleid',authorization({resource:"article", action:"write"}), articleService.AddArticleToFolder);
 server.put('/DVP/API/:version/Folder/:folderid/Group',authorization({resource:"article", action:"write"}), articleService.AddGroupToFolder);
+
+
 server.put('/DVP/API/:version/Article/:articleid/Comment',authorization({resource:"article", action:"write"}), articleService.AddCommentToArticle);
 server.put('/DVP/API/:version/Article/:articleid/Vote',authorization({resource:"article", action:"write"}), articleService.AddVoteToArticle);
 server.put('/DVP/API/:version/Article/:articleid/Tag',authorization({resource:"article", action:"write"}), articleService.AddTagToArticle);
@@ -56,7 +58,8 @@ server.put('/DVP/API/:version/Article/:articleid/SearchMeta',authorization({reso
 
 server.del('/DVP/API/:version/Article/:articleid/Tag',authorization({resource:"article", action:"delete"}), articleService.RemoveTagsFromArticle);
 server.del('/DVP/API/:version/Article/:articleid/SearchTag',authorization({resource:"article", action:"delete"}), articleService.RemoveSearchTagFromArticle);
-
+server.del('/DVP/API/:version/Folder/:folderid/Group',authorization({resource:"article", action:"write"}), articleService.RemoveGroupFromFolder);
+server.del('/DVP/API/:version/Category/:catid/BU',authorization({resource:"article", action:"write"}), articleService.RemoveBuFromCategory);
 
 server.put('/DVP/API/:version/Category/:id',authorization({resource:"article", action:"write"}), articleService.UpdateCategory);
 server.put('/DVP/API/:version/Folder/:id',authorization({resource:"article", action:"write"}), articleService.UpdateFolder);
