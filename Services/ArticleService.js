@@ -961,6 +961,52 @@ module.exports.ArticleService = class ArticleService {
         }
     };
 
+    async GetFullCategoryWithArticles(req, res){
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let id = req.params.id;
+        let jsonString;
+
+        const msg = req.body;
+        try {
+            const articleCategory = await ArticleCategory.findOne({_id: id, company: company, tenant: tenant})
+                .populate({
+                    path: 'folders',
+                    model: ArticleFolder,
+                    select: 'title description author articles',
+                    populate: [{
+                        path: 'author',
+                        model: 'User',
+                        select: 'firstname lastname username avatar'
+                    },{
+                        path : 'articles',
+                        model: Article,
+                        select: 'title description author',
+                        populate: [{
+                            path: 'author',
+                            model: 'User',
+                            select: 'title lastname username avatar'
+                        },
+                            {
+                                path: 'votes',
+                                model: 'ArticleVote'
+                            }
+                        ]
+                    }]
+                })
+                .populate('author', 'firstname lastname username avatar')
+                .populate('allow_business_units', 'unitName');
+            jsonString = messageFormatter.FormatMessage(undefined, "Category retrieved successfully", true, articleCategory);
+            res.end(jsonString);
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Category retrieve Failed", false, undefined);
+            res.end(jsonString);
+        }
+    };
+
     async GetFolders(req, res){
 
         let company = parseInt(req.user.company);

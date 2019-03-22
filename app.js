@@ -84,6 +84,12 @@ server.get('/DVP/API/:version/SearchArticle/:text',authorization({resource:"arti
 server.get('/DVP/API/:version/FullArticle/:id',authorization({resource:"article", action:"read"}), articleService.GetFullArticle);
 
 
+server.get('/DVP/API/:version/ViewCategory/:id',authorization({resource:"article", action:"read"}), articleService.GetFullCategoryWithArticles);
+
+
+
+
+
 
 server.listen(port, function () {
 
