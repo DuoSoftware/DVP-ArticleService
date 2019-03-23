@@ -51,6 +51,9 @@ server.put('/DVP/API/:version/Folder/:folderid/Group',authorization({resource:"a
 
 server.put('/DVP/API/:version/Article/:articleid/Comment',authorization({resource:"article", action:"write"}), articleService.AddCommentToArticle);
 server.put('/DVP/API/:version/Article/:articleid/Vote',authorization({resource:"article", action:"write"}), articleService.AddVoteToArticle);
+server.put('/DVP/API/:version/Vote/:vid',authorization({resource:"article", action:"write"}), articleService.UpdateVoteOfTheArticle);
+
+
 server.put('/DVP/API/:version/Article/:articleid/Tag',authorization({resource:"article", action:"write"}), articleService.AddTagToArticle);
 server.put('/DVP/API/:version/Article/:articleid/SearchTag',authorization({resource:"article", action:"write"}), articleService.AddSearchTagToArticle);
 server.put('/DVP/API/:version/Article/:articleid/SearchMeta',authorization({resource:"article", action:"write"}), articleService.AddSearchMetaToArticle);

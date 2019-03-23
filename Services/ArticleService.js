@@ -528,6 +528,42 @@ module.exports.ArticleService = class ArticleService {
 
     }
 
+    async UpdateVoteOfTheArticle(req,res){
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+
+            const articleVote = await ArticleVote.findOne({_id: req.params.vid, company: company, tenant: tenant})
+                .populate('author', 'firstname lastname username avatar');;
+
+
+            if(articleVote && articleVote.author.username === req.user.iss && req.body.vote != undefined){
+
+                articleVote.vote = req.body.vote;
+                const _vote = await articleVote.save();
+                logger.log(`Comment saved and setting vote to article ${req.params.articleid}`);
+                jsonString = messageFormatter.FormatMessage(undefined, "Vote updated successfully", true, _vote);
+                res.end(jsonString);
+
+            }else{
+
+                jsonString = messageFormatter.FormatMessage(new Error("Not update criteria met"), "Vote updated faled", true, undefined);
+                res.end(jsonString);
+            }
+
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Vote updated Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    }
+
     async AddTagToArticle(req,res){
 
         let company = parseInt(req.user.company);
