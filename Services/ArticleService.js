@@ -982,7 +982,7 @@ module.exports.ArticleService = class ArticleService {
                     },{
                         path : 'articles',
                         model: Article,
-                        select: 'title description author',
+                        select: 'title description author votes',
                         populate: [{
                             path: 'author',
                             model: 'User',
