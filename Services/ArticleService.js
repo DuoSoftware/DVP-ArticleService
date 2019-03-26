@@ -1137,7 +1137,7 @@ module.exports.ArticleService = class ArticleService {
                     path: 'folders',
                     model: ArticleFolder,
                     match: folderMatchQuery,
-                    select: 'title description author articles',
+                    select: 'title description author articles created_at',
                     populate: [{
                         path: 'author',
                         model: 'User',
@@ -1145,7 +1145,7 @@ module.exports.ArticleService = class ArticleService {
                     },{
                         path : 'articles',
                         model: Article,
-                        select: 'title description author votes',
+                        select: 'title description author votes created_at tags',
                         populate: [{
                             path: 'author',
                             model: 'User',
