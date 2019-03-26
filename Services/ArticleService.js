@@ -1550,37 +1550,33 @@ module.exports.ArticleService = class ArticleService {
                                 //////////////////////////////////no allow category found////////////////////////////////////
                             }
 
-                        }else{
+                        }else {
                             //////////////////////////open BU go ahead////////////////////////////////////////////////////////
-                            let allowCats = catItem.allow_business_units.filter(bux => bux.unitName == userAccount.group.businessUnit);
-                            if(allowCats && Array.isArray(allowCats) && allowCats.length > 0){
-                                ///////////////////category found////////////////////////////////
-                                if(catItem.folders && Array.isArray(catItem.folders) && catItem.folders.length > 0){
-                                    ////////////////////////////////////folders found for the category//////////////////////
-                                    let allowFolders = catItem.folders.filter( flx => {
-                                        if(flx.allow_groups && Array.isArray(flx.allow_groups) && flx.allow_groups.length > 0){
-                                            if(flx.allow_groups.indexOf(userAccount.group) > 0){
-                                                return true;
-                                            }else{
-                                                return false;
-                                            }
 
-                                        }else{
-                                            /////////////////open group folder//////////////////////////////////////////////////////
+                            if (catItem.folders && Array.isArray(catItem.folders) && catItem.folders.length > 0) {
+                                ////////////////////////////////////folders found for the category//////////////////////
+                                let allowFolders = catItem.folders.filter(flx => {
+                                    if (flx.allow_groups && Array.isArray(flx.allow_groups) && flx.allow_groups.length > 0) {
+                                        if (flx.allow_groups.indexOf(userAccount.group) > 0) {
                                             return true;
+                                        } else {
+                                            return false;
                                         }
-                                    });
 
-                                    if(allowFolders && Array.isArray(allowFolders) && allowFolders.length > 0 ){
-                                        cats.push(catItem);
+                                    } else {
+                                        /////////////////open group folder//////////////////////////////////////////////////////
+                                        return true;
                                     }
+                                });
 
-                                }else{
-                                    ////////////////////////////////////no folders in tis category/////////////////////
+                                if (allowFolders && Array.isArray(allowFolders) && allowFolders.length > 0) {
+                                    cats.push(catItem);
                                 }
-                            }else{
-                                //////////////////////////////////no allow category found////////////////////////////////////
+
+                            } else {
+                                ////////////////////////////////////no folders in tis category/////////////////////
                             }
+
                         }
 
                         return cats;
