@@ -1489,6 +1489,153 @@ module.exports.ArticleService = class ArticleService {
         const msg = req.body;
         try {
 
+
+            const userAccount = await UserAccount.findOne({
+                user: req.user.iss,
+                company: company,
+                tenant: tenant
+            }).select('use group').populate('group', 'name businessUnit').lean();
+
+
+            const articleFolders = await ArticleFolder.find({articles:id}).lean();
+            const ids = articleFolders.map(fd => fd._id);
+            const articleCategory = await ArticleCategory.find({folders: {$in: ids}})
+                .populate('allow_business_units', 'unitName')
+                .populate({
+                    path: 'folders',
+                    model: ArticleFolder,
+                    match: {articles:id},
+                    select: 'allow_groups'})
+                .lean();
+
+
+            if(articleFolders.length > 0) {
+                if(articleCategory.length > 0) {
+
+                    ///////////////////////go through each item and find permission////////////////////
+                    let allowCategories = articleCategory.reduce((cats, catItem)=>{
+
+                        if(catItem.allow_business_units && catItem.allow_business_units.length > 0
+                            && userAccount && userAccount.group && userAccount.group.businessUnit) {
+
+                            let allowCats = catItem.allow_business_units.filter(bux => bux.unitName == userAccount.group.businessUnit);
+                            if(allowCats && Array.isArray(allowCats) && allowCats.length > 0){
+                                ///////////////////category found////////////////////////////////
+                                if(catItem.folders && Array.isArray(catItem.folders) && catItem.folders.length > 0){
+                                    ////////////////////////////////////folders found for the category//////////////////////
+                                    let allowFolders = catItem.folders.filter( flx => {
+                                        if(flx.allow_groups && Array.isArray(flx.allow_groups) && flx.allow_groups.length > 0){
+                                            if(flx.allow_groups.filter(gp =>
+                                                    gp.toString() === userAccount.group._id.toString()
+                                                ).length > 0){
+                                                return true;
+                                            }else{
+                                                return false;
+                                            }
+
+                                        }else{
+                                            /////////////////open group folder//////////////////////////////////////////////////////
+                                            return true;
+                                        }
+                                    });
+
+                                    if(allowFolders && Array.isArray(allowFolders) && allowFolders.length > 0 ){
+                                        cats.push(catItem);
+                                    }
+
+                                }else{
+                                    ////////////////////////////////////no folders in tis category/////////////////////
+                                }
+                            }else{
+                                //////////////////////////////////no allow category found////////////////////////////////////
+                            }
+
+                        }else{
+                            //////////////////////////open BU go ahead////////////////////////////////////////////////////////
+                            let allowCats = catItem.allow_business_units.filter(bux => bux.unitName == userAccount.group.businessUnit);
+                            if(allowCats && Array.isArray(allowCats) && allowCats.length > 0){
+                                ///////////////////category found////////////////////////////////
+                                if(catItem.folders && Array.isArray(catItem.folders) && catItem.folders.length > 0){
+                                    ////////////////////////////////////folders found for the category//////////////////////
+                                    let allowFolders = catItem.folders.filter( flx => {
+                                        if(flx.allow_groups && Array.isArray(flx.allow_groups) && flx.allow_groups.length > 0){
+                                            if(flx.allow_groups.indexOf(userAccount.group) > 0){
+                                                return true;
+                                            }else{
+                                                return false;
+                                            }
+
+                                        }else{
+                                            /////////////////open group folder//////////////////////////////////////////////////////
+                                            return true;
+                                        }
+                                    });
+
+                                    if(allowFolders && Array.isArray(allowFolders) && allowFolders.length > 0 ){
+                                        cats.push(catItem);
+                                    }
+
+                                }else{
+                                    ////////////////////////////////////no folders in tis category/////////////////////
+                                }
+                            }else{
+                                //////////////////////////////////no allow category found////////////////////////////////////
+                            }
+                        }
+
+                        return cats;
+
+                    },[]);
+                    if (allowCategories.length == 0)
+                        throw new Error("Category access permission denied");
+                }else{
+
+                    let allowFolders = articleFolders.filter( flx => {
+                        if(flx.allow_groups && Array.isArray(flx.allow_groups) && flx.allow_groups.length > 0){
+                            if(flx.allow_groups.filter(gp =>
+                                    gp.toString() === userAccount.group._id.toString()
+                                ).length > 0){
+                                return true;
+                            }else{
+                                return false;
+                            }
+
+                        }else{
+                            /////////////////open group folder//////////////////////////////////////////////////////
+                            return true;
+                        }
+                    });
+
+                    if(allowFolders.length == 0)
+                        throw new Error("Folder access permission denied");
+
+                }
+            }
+
+            if(userAccount && userAccount.group && userAccount.group.businessUnit){
+
+                ////////////check only empty arrays/////////////////////////////////
+                if(articleFolders && Array.isArray(articleFolders)
+                    && articleFolders.length > 0 && articleCategory &&
+                    Array.isArray(articleCategory) && articleCategory.length > 0){
+
+                }else{
+                    /////////free article no problem
+                }
+
+            }else{
+                ////////////check only empty arrays/////////////////////////////////
+                if(articleFolders && Array.isArray(articleFolders)
+                    && articleFolders.length > 0 && articleCategory &&
+                    Array.isArray(articleCategory) && articleCategory.length > 0){
+
+                }else{
+                    /////////free article no problem
+                }
+            }
+
+
+
             const article = await Article.findOne({_id: id, company: company, tenant: tenant})
                 .populate('author', 'firstname lastname username avatar')
                 .populate({
