@@ -1073,7 +1073,7 @@ module.exports.ArticleService = class ArticleService {
                 .populate('author', 'firstname lastname username avatar')
                 .populate('allow_business_units', 'unitName').lean();
 
-            if(articleCategory && userAccount && userAccount.group.businessUnit){
+            if(articleCategory && userAccount && userAccount.group && userAccount.group.businessUnit){
                 if(articleCategory.allow_business_units.length == 0 ||(articleCategory.allow_business_units.filter(
                         unit => unit.unitName === userAccount.group.businessUnit).length > 0)){
                     jsonString = messageFormatter.FormatMessage(undefined, "Category retrieved successfully", true, articleCategory);
@@ -1161,7 +1161,7 @@ module.exports.ArticleService = class ArticleService {
                 .populate('author', 'firstname lastname username avatar')
                 .populate('allow_business_units', 'unitName').lean();
 
-            if(articleCategory && userAccount && userAccount.group.businessUnit){
+            if(articleCategory && userAccount.group && userAccount.group.businessUnit){
                 if(articleCategory.allow_business_units.length == 0 ||(articleCategory.allow_business_units.filter(
                         unit => unit.unitName === userAccount.group.businessUnit).length > 0)){
                     jsonString = messageFormatter.FormatMessage(undefined, "Category retrieved successfully", true, articleCategory);
