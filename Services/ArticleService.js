@@ -1010,7 +1010,7 @@ module.exports.ArticleService = class ArticleService {
                 .populate({
                     path: 'folders',
                     model: ArticleFolder,
-                    select: 'title description author articles',
+                    select: 'title description author articles created_at',
                     populate: [{
                         path: 'author',
                         model: 'User',
@@ -1018,11 +1018,11 @@ module.exports.ArticleService = class ArticleService {
                     },{
                         path : 'articles',
                         model: Article,
-                        select: 'title description author votes',
+                        select: 'title description author votes created_at tags',
                         populate: [{
                             path: 'author',
                             model: 'User',
-                            select: 'title lastname username avatar'
+                            select: 'title lastname username avatar '
                         },
                             {
                                 path: 'votes',
@@ -1100,7 +1100,7 @@ module.exports.ArticleService = class ArticleService {
                     populate: [{
                         path: 'author',
                         model: 'User',
-                        select: 'title lastname username avatar'
+                        select: 'title lastname username avatar created_at tags'
                     },
                         {
                             path: 'votes',
