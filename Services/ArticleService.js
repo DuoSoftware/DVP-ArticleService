@@ -902,6 +902,8 @@ module.exports.ArticleService = class ArticleService {
 
     }
 
+    //////////////////////////////////////get methods//////////////////////////////////////////////////////////////////////
+
     async GetCategories(req, res){
 
 
@@ -910,9 +912,44 @@ module.exports.ArticleService = class ArticleService {
         let jsonString;
 
         const msg = req.body;
+
+        const userAccount = await UserAccount.findOne({
+            user: req.user.iss,
+            company: company,
+            tenant: tenant
+        }).select('use group').populate('group', 'name businessUnit');
+
+
+        let query = {
+            company: company,
+            tenant: tenant
+        };
+
+        let orQuery = {$or: [ {
+            allow_business_units: {
+                $size: 0
+            }}]};
+
+        let andQuery;
+
+        if(userAccount && userAccount.group){
+            orQuery.$or.push({allow_business_units : userAccount.group.businessUnit});
+            andQuery =
+                {
+                    $and: [query,orQuery]
+                };
+        }else{
+
+            query.allow_business_units = {
+                $size: 0
+            }
+
+            andQuery = query;
+        }
+
+
         try {
-            const articleCategory = await ArticleCategory.find({company: company, tenant: tenant})
-                .populate('author', 'firstname lastname username avatar');
+            const articleCategory = await ArticleCategory.find(andQuery).populate('author', 'firstname lastname username avatar');
             jsonString = messageFormatter.FormatMessage(undefined, "Categories retrieved successfully", true, articleCategory);
             res.end(jsonString);
 
@@ -921,6 +958,7 @@ module.exports.ArticleService = class ArticleService {
             jsonString = messageFormatter.FormatMessage(ex, "Categories retrieve Failed", false, undefined);
             res.end(jsonString);
         }
+
 
     };
 
@@ -955,9 +993,37 @@ module.exports.ArticleService = class ArticleService {
 
         const msg = req.body;
         try {
-            const articleCategory = await ArticleCategory.findOne({_id: id, company: company, tenant: tenant});
-            jsonString = messageFormatter.FormatMessage(undefined, "Category retrieved successfully", true, articleCategory);
-            res.end(jsonString);
+
+            const userAccount = await UserAccount.findOne({
+                user: req.user.iss,
+                company: company,
+                tenant: tenant
+            }).select('use group').populate('group', 'name businessUnit').lean();
+
+
+            const articleCategory = await ArticleCategory.findOne({_id: id, company: company, tenant: tenant})
+                .populate('allow_business_units', 'unitName').lean();
+
+            //userAccount.group.businessUnit
+            if(articleCategory && userAccount && userAccount.group.businessUnit){
+                if(articleCategory.allow_business_units.length == 0 ||(articleCategory.allow_business_units.filter(
+                    unit => unit.unitName === userAccount.group.businessUnit).length > 0)){
+                    jsonString = messageFormatter.FormatMessage(undefined, "Category retrieved successfully", true, articleCategory);
+                    res.end(jsonString);
+                }else{
+                    jsonString = messageFormatter.FormatMessage(new Error('Permission denied '), "Category retrieve Failed", false, undefined);
+                    res.end(jsonString);
+                }
+            }else{
+                if(articleCategory && articleCategory.allow_business_units.length == 0){
+                    jsonString = messageFormatter.FormatMessage(undefined, "Category retrieved successfully", true, articleCategory);
+                    res.end(jsonString);
+                }else{
+                    jsonString = messageFormatter.FormatMessage(new Error('Permission denied '), "Category retrieve Failed", false, undefined);
+                    res.end(jsonString);
+                }
+            }
+
 
         }catch(ex){
 
@@ -975,10 +1041,29 @@ module.exports.ArticleService = class ArticleService {
 
         const msg = req.body;
         try {
+
+            const userAccount = await UserAccount.findOne({
+                user: req.user.iss,
+                company: company,
+                tenant: tenant
+            }).select('use group').populate('group', 'name businessUnit').lean();
+
+
+            let folderMatchQuery = {
+                $or : [{allow_groups : {$size: 0}}]
+            }
+
+            if(userAccount&& userAccount.group){
+                folderMatchQuery.$or.push({
+                    allow_groups: userAccount.group._id.toString()
+                });
+            }
+
             const articleCategory = await ArticleCategory.findOne({_id: id, company: company, tenant: tenant})
                 .populate({
                     path: 'folders',
                     model: ArticleFolder,
+                    match: folderMatchQuery,
                     populate: {
                         path: 'author',
                         model: 'User',
@@ -986,9 +1071,29 @@ module.exports.ArticleService = class ArticleService {
                     }
                 })
                 .populate('author', 'firstname lastname username avatar')
-                .populate('allow_business_units', 'unitName');
-            jsonString = messageFormatter.FormatMessage(undefined, "Category retrieved successfully", true, articleCategory);
-            res.end(jsonString);
+                .populate('allow_business_units', 'unitName').lean();
+
+            if(articleCategory && userAccount && userAccount.group.businessUnit){
+                if(articleCategory.allow_business_units.length == 0 ||(articleCategory.allow_business_units.filter(
+                        unit => unit.unitName === userAccount.group.businessUnit).length > 0)){
+                    jsonString = messageFormatter.FormatMessage(undefined, "Category retrieved successfully", true, articleCategory);
+                    res.end(jsonString);
+                }else{
+                    jsonString = messageFormatter.FormatMessage(new Error('Permission denied '), "Category retrieve Failed", false, undefined);
+                    res.end(jsonString);
+                }
+            }else{
+                if(articleCategory && articleCategory.allow_business_units.length == 0){
+                    jsonString = messageFormatter.FormatMessage(undefined, "Category retrieved successfully", true, articleCategory);
+                    res.end(jsonString);
+                }else{
+                    jsonString = messageFormatter.FormatMessage(new Error('Permission denied '), "Category retrieve Failed", false, undefined);
+                    res.end(jsonString);
+                }
+            }
+
+            //jsonString = messageFormatter.FormatMessage(undefined, "Category retrieved successfully", true, articleCategory);
+            //res.end(jsonString);
 
         }catch(ex){
 
@@ -1006,10 +1111,32 @@ module.exports.ArticleService = class ArticleService {
 
         const msg = req.body;
         try {
+
+
+
+            const userAccount = await UserAccount.findOne({
+                user: req.user.iss,
+                company: company,
+                tenant: tenant
+            }).select('use group').populate('group', 'name businessUnit').lean();
+
+
+            let folderMatchQuery = {
+                $or : [{allow_groups : {$size: 0}}]
+            }
+
+            if(userAccount&& userAccount.group){
+                folderMatchQuery.$or.push({
+                    allow_groups: userAccount.group._id.toString()
+                });
+            }
+
+
             const articleCategory = await ArticleCategory.findOne({_id: id, company: company, tenant: tenant})
                 .populate({
                     path: 'folders',
                     model: ArticleFolder,
+                    match: folderMatchQuery,
                     select: 'title description author articles',
                     populate: [{
                         path: 'author',
@@ -1032,9 +1159,27 @@ module.exports.ArticleService = class ArticleService {
                     }]
                 })
                 .populate('author', 'firstname lastname username avatar')
-                .populate('allow_business_units', 'unitName');
-            jsonString = messageFormatter.FormatMessage(undefined, "Category retrieved successfully", true, articleCategory);
-            res.end(jsonString);
+                .populate('allow_business_units', 'unitName').lean();
+
+            if(articleCategory && userAccount && userAccount.group.businessUnit){
+                if(articleCategory.allow_business_units.length == 0 ||(articleCategory.allow_business_units.filter(
+                        unit => unit.unitName === userAccount.group.businessUnit).length > 0)){
+                    jsonString = messageFormatter.FormatMessage(undefined, "Category retrieved successfully", true, articleCategory);
+                    res.end(jsonString);
+                }else{
+                    jsonString = messageFormatter.FormatMessage(new Error('Permission denied '), "Category retrieve Failed", false, undefined);
+                    res.end(jsonString);
+                }
+            }else{
+                if(articleCategory && articleCategory.allow_business_units.length == 0){
+                    jsonString = messageFormatter.FormatMessage(undefined, "Category retrieved successfully", true, articleCategory);
+                    res.end(jsonString);
+                }else{
+                    jsonString = messageFormatter.FormatMessage(new Error('Permission denied '), "Category retrieve Failed", false, undefined);
+                    res.end(jsonString);
+                }
+            }
+
 
         }catch(ex){
 
@@ -1051,7 +1196,45 @@ module.exports.ArticleService = class ArticleService {
 
         const msg = req.body;
         try {
-            const articleFolder = await ArticleFolder.find({company: company, tenant: tenant}).populate('author', 'firstname lastname username avatar');
+            const userAccount = await UserAccount.findOne({
+                user: req.user.iss,
+                company: company,
+                tenant: tenant
+            }).select('use group').populate('group', 'name businessUnit').lean();
+
+            let query = {
+                company: company,
+                tenant: tenant
+            };
+
+            let orQuery = {$or: [ {
+                allow_groups: {
+                    $size: 0
+                }}]};
+
+            let andQuery;
+
+            if(userAccount && userAccount.group){
+                orQuery.$or.push({allow_groups : userAccount.group._id.toString()});
+                andQuery =
+                    {
+                        $and: [query,orQuery]
+                    };
+            }else{
+
+                query.allow_groups = {
+                    $size: 0
+                }
+
+                andQuery = query;
+            }
+
+
+
+            const articleFolder = await ArticleFolder.find(andQuery)
+                .populate('author', 'firstname lastname username avatar').lean();
+
+
             jsonString = messageFormatter.FormatMessage(undefined, "Folders retrieved successfully", true, articleFolder);
             res.end(jsonString);
 
@@ -1071,9 +1254,36 @@ module.exports.ArticleService = class ArticleService {
 
         const msg = req.body;
         try {
+            const userAccount = await UserAccount.findOne({
+                user: req.user.iss,
+                company: company,
+                tenant: tenant
+            }).select('use group').populate('group', 'name businessUnit').lean();
+
             const articleFolder = await ArticleFolder.findOne({_id: id, company: company, tenant: tenant});
-            jsonString = messageFormatter.FormatMessage(undefined, "Folder retrieved successfully", true, articleFolder);
-            res.end(jsonString);
+
+
+            if(userAccount && articleFolder && userAccount.group){
+                if(articleFolder.allow_groups.length == 0 || (articleFolder.allow_groups.indexOf(userAccount._id) > -1)){
+                    jsonString = messageFormatter.FormatMessage(undefined, "Folder retrieved successfully", true, articleFolder);
+                    res.end(jsonString);
+                }else{
+                    jsonString = messageFormatter.FormatMessage(new Error('Permission denied'), "Folder retrieve Failed", false, undefined);
+                    res.end(jsonString);
+                }
+            }else{
+                if(articleFolder && articleFolder.allow_groups.length == 0){
+
+                    jsonString = messageFormatter.FormatMessage(undefined, "Folder retrieved successfully", true, articleFolder);
+                    res.end(jsonString);
+                }else{
+                    jsonString = messageFormatter.FormatMessage(new Error('Permission denied'), "Folder retrieve Failed", false, undefined);
+                    res.end(jsonString);
+                }
+            }
+
+
+
 
         }catch(ex){
 
@@ -1092,6 +1302,13 @@ module.exports.ArticleService = class ArticleService {
 
         const msg = req.body;
         try {
+
+            const userAccount = await UserAccount.findOne({
+                user: req.user.iss,
+                company: company,
+                tenant: tenant
+            }).select('use group').populate('group', 'name businessUnit').lean();
+
             const articleFolder = await ArticleFolder.findOne({_id: id, company: company, tenant: tenant})
                 .populate({
                     path : 'articles',
@@ -1110,7 +1327,29 @@ module.exports.ArticleService = class ArticleService {
 
                 })
                 .populate('author', 'firstname lastname username avatar')
-                .populate('allow_groups','name');
+                .populate('allow_groups','name').lean();
+
+
+            if(userAccount && articleFolder && userAccount.group) {
+                if (articleFolder.allow_groups.length == 0 || (articleFolder.allow_groups.filter(
+                    grp => grp._id.toString() == userAccount.group._id.toString()
+                    ).length > 0)) {
+                    jsonString = messageFormatter.FormatMessage(undefined, "Folder retrieved successfully", true, articleFolder);
+                    res.end(jsonString);
+                } else {
+                    jsonString = messageFormatter.FormatMessage(new Error('Permission denied'), "Folder retrieve Failed", false, undefined);
+                    res.end(jsonString);
+                }
+            }else{
+                if(articleFolder && articleFolder.allow_groups.length == 0){
+
+                    jsonString = messageFormatter.FormatMessage(undefined, "Folder retrieved successfully", true, articleFolder);
+                    res.end(jsonString);
+                }else{
+                    jsonString = messageFormatter.FormatMessage(new Error('Permission denied'), "Folder retrieve Failed", false, undefined);
+                    res.end(jsonString);
+                }
+            }
 
             jsonString = messageFormatter.FormatMessage(undefined, "Folder retrieved successfully", true, articleFolder);
             res.end(jsonString);
@@ -1279,6 +1518,9 @@ module.exports.ArticleService = class ArticleService {
             res.end(jsonString);
         }
     };
+
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     async DisableArticle(req, res) {
 
