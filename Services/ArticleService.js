@@ -1118,7 +1118,7 @@ module.exports.ArticleService = class ArticleService {
                 user: req.user.iss,
                 company: company,
                 tenant: tenant
-            }).select('use group').populate('group', 'name businessUnit').lean();
+            }).select('user group').populate('group', 'name businessUnit').lean();
 
 
             let folderMatchQuery = {
@@ -1200,7 +1200,7 @@ module.exports.ArticleService = class ArticleService {
                 user: req.user.iss,
                 company: company,
                 tenant: tenant
-            }).select('use group').populate('group', 'name businessUnit').lean();
+            }).select('user group').populate('group', 'name businessUnit').lean();
 
             let query = {
                 company: company,
@@ -1258,7 +1258,7 @@ module.exports.ArticleService = class ArticleService {
                 user: req.user.iss,
                 company: company,
                 tenant: tenant
-            }).select('use group').populate('group', 'name businessUnit').lean();
+            }).select('user group').populate('group', 'name businessUnit').lean();
 
             const articleFolder = await ArticleFolder.findOne({_id: id, company: company, tenant: tenant});
 
@@ -1307,7 +1307,7 @@ module.exports.ArticleService = class ArticleService {
                 user: req.user.iss,
                 company: company,
                 tenant: tenant
-            }).select('use group').populate('group', 'name businessUnit').lean();
+            }).select('user group').populate('group', 'name businessUnit').lean();
 
             const articleFolder = await ArticleFolder.findOne({_id: id, company: company, tenant: tenant})
                 .populate({
@@ -1494,7 +1494,7 @@ module.exports.ArticleService = class ArticleService {
                 user: req.user.iss,
                 company: company,
                 tenant: tenant
-            }).select('use group').populate('group', 'name businessUnit').lean();
+            }).select('user group').populate('group', 'name businessUnit').lean();
 
 
             const articleFolders = await ArticleFolder.find({articles:id}).lean();
