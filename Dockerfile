@@ -5,6 +5,6 @@ RUN cd /usr/local/src/articleservice
 WORKDIR /usr/local/src/articleservice
 RUN npm install
 COPY . .
-EXPOSE 3635
+EXPOSE 3636
 CMD [ "node", "/usr/local/src/articleservice/app.js" ]
 
