@@ -8,7 +8,7 @@ const ArticleComment = require('dvp-mongomodels/model/Articles/Comment').Article
 const ArticleTag = require('dvp-mongomodels/model/Articles/Tag').ArticleTag;
 const ArticleVote = require('dvp-mongomodels/model/Articles/Vote').ArticleVote;
 const UserAccount = require('dvp-mongomodels/model/UserAccount');
-const UserGroup = require('dvp-mongomodels/model/UserGroup');
+const UserGroup = require('dvp-mongomodels/model/UserGroup').UserGroup;
 const BusinessUnit = require('dvp-mongomodels/model/BusinessUnit').BusinessUnit;
 
 
@@ -22,7 +22,7 @@ module.exports.ArticleService = class ArticleService {
 
         const msg = req.body;
         try {
-            const userAccount = await UserAccount.findOne({user: req.user.iss, company: company, tenant: tenant});
+            const userAccount = await UserAccount.findOne({user: req.user.iss, company: company, tenant: tenant}).select('userref');
 
             let tagArray = [];
             if(req.body.tags && Array.isArray(req.body.tags)){
@@ -98,7 +98,7 @@ module.exports.ArticleService = class ArticleService {
 
         const msg = req.body;
         try {
-            const userAccount = await UserAccount.findOne({user: req.user.iss, company: company, tenant: tenant});
+            const userAccount = await UserAccount.findOne({user: req.user.iss, company: company, tenant: tenant}).select('userref');
 
             let category = ArticleCategory({
                 created_at: Date.now(),
@@ -136,7 +136,7 @@ module.exports.ArticleService = class ArticleService {
 
         const msg = req.body;
         try {
-            const userAccount = await UserAccount.findOne({user: req.user.iss, company: company, tenant: tenant});
+            const userAccount = await UserAccount.findOne({user: req.user.iss, company: company, tenant: tenant}).select('userref');
 
 
             let folder = ArticleFolder({
@@ -445,7 +445,7 @@ module.exports.ArticleService = class ArticleService {
 
         const msg = req.body;
         try {
-            const userAccount = await UserAccount.findOne({user: req.user.iss, company: company, tenant: tenant});
+            const userAccount = await UserAccount.findOne({user: req.user.iss, company: company, tenant: tenant}).select('userref');
 
 
             let comment = ArticleComment({
@@ -491,7 +491,7 @@ module.exports.ArticleService = class ArticleService {
 
         const msg = req.body;
         try {
-            const userAccount = await UserAccount.findOne({user: req.user.iss, company: company, tenant: tenant});
+            const userAccount = await UserAccount.findOne({user: req.user.iss, company: company, tenant: tenant}).select('userref');
 
 
             let vote = ArticleVote({
@@ -913,12 +913,36 @@ module.exports.ArticleService = class ArticleService {
 
         const msg = req.body;
 
+        let businessItems = [];
         const userAccount = await UserAccount.findOne({
             user: req.user.iss,
             company: company,
             tenant: tenant
-        }).select('use group').populate('group', 'name businessUnit');
+        }).select('user  group userref').populate('group', 'name businessUnit');
 
+
+        let groupItems = [];
+        if(userAccount.userref){
+            const userGroups = await UserGroup.find({
+                company: company,
+                tenant: tenant,
+                supervisors:userAccount.userref
+            }).select('businessUnit').lean();
+
+            userGroups.map((grp) => {
+                groupItems.push(grp._id.toString());
+                if (grp.businessUnit)
+                    businessItems.push(grp.businessUnit)
+                return true;
+            });
+
+        }
+
+        if(userAccount && userAccount.group && userAccount.group.businessUnit){
+            businessItems.push(userAccount.group.businessUnit);
+        }
+
+        //businessItems
 
         let query = {
             company: company,
@@ -932,8 +956,9 @@ module.exports.ArticleService = class ArticleService {
 
         let andQuery;
 
-        if(userAccount && userAccount.group){
-            orQuery.$or.push({allow_business_units : userAccount.group.businessUnit});
+        if(businessItems && Array.isArray(businessItems) && businessItems.length > 0){
+
+            orQuery.$or.push({allow_business_units : {$in: businessItems}});
             andQuery =
                 {
                     $and: [query,orQuery]
@@ -949,7 +974,29 @@ module.exports.ArticleService = class ArticleService {
 
 
         try {
-            const articleCategory = await ArticleCategory.find(andQuery).populate('author', 'firstname lastname username avatar');
+            const articleCategory = await ArticleCategory.find(andQuery)
+                .populate('author', 'firstname lastname username avatar')
+                //.populate('allow_business_units', 'unitName');
+
+            // let cats = [];
+            //
+            // if(articleCategory && Array.isArray(articleCategory) && articleCategory.length > 0)
+            // {
+            //
+            //     cats = articleCategory.reduce((catArr, cat) => {
+            //         if(cat.allow_business_units.length == 0 ||(cat.allow_business_units.filter(
+            //                 unit => businessItems.indexOf(unit.unitName) > -1).length > 0)){
+            //             catArr.push(cat);
+            //
+            //         }else{
+            //            logger.info(`This business use has no permission ${cat.title}`);
+            //         }
+            //         return catArr;
+            //     },[]);
+            //
+            //
+            // }
+
             jsonString = messageFormatter.FormatMessage(undefined, "Categories retrieved successfully", true, articleCategory);
             res.end(jsonString);
 
@@ -994,20 +1041,41 @@ module.exports.ArticleService = class ArticleService {
         const msg = req.body;
         try {
 
+            let businessItems = [];
             const userAccount = await UserAccount.findOne({
                 user: req.user.iss,
                 company: company,
                 tenant: tenant
-            }).select('use group').populate('group', 'name businessUnit').lean();
+            }).select('user group userref').populate('group', 'name businessUnit');
+
+            let groupItems = [];
+            if(userAccount.userref){
+                const userGroups = await UserGroup.find({
+                    company: company,
+                    tenant: tenant,
+                    supervisors:userAccount.userref
+                }).select('businessUnit').lean();
+
+                userGroups.map((grp) => {
+                    groupItems.push(grp._id.toString());
+                    if (grp.businessUnit)
+                        businessItems.push(grp.businessUnit)
+                    return true;
+                });
+
+            }
+
+            if(userAccount && userAccount.group && userAccount.group.businessUnit){
+                businessItems.push(userAccount.group.businessUnit);
+            }
 
 
-            const articleCategory = await ArticleCategory.findOne({_id: id, company: company, tenant: tenant})
-                .populate('allow_business_units', 'unitName').lean();
-
+            const articleCategory = await ArticleCategory.findOne({_id: id, company: company, tenant: tenant}).lean();
+            //.populate('allow_business_units', 'unitName')
             //userAccount.group.businessUnit
-            if(articleCategory && userAccount && userAccount.group.businessUnit){
+            if(businessItems && Array.isArray(businessItems) && businessItems.length > 0){
                 if(articleCategory.allow_business_units.length == 0 ||(articleCategory.allow_business_units.filter(
-                    unit => unit.unitName === userAccount.group.businessUnit).length > 0)){
+                    unit =>  businessItems.indexOf(unit)  > -1).length > 0)){
                     jsonString = messageFormatter.FormatMessage(undefined, "Category retrieved successfully", true, articleCategory);
                     res.end(jsonString);
                 }else{
@@ -1042,22 +1110,48 @@ module.exports.ArticleService = class ArticleService {
         const msg = req.body;
         try {
 
+            let businessItems = [];
+            let groupItems = [];
             const userAccount = await UserAccount.findOne({
                 user: req.user.iss,
                 company: company,
                 tenant: tenant
-            }).select('use group').populate('group', 'name businessUnit').lean();
-
+            }).select('user group userref').populate('group', 'name businessUnit');
 
             let folderMatchQuery = {
                 $or : [{allow_groups : {$size: 0}}]
             }
 
-            if(userAccount&& userAccount.group){
-                folderMatchQuery.$or.push({
-                    allow_groups: userAccount.group._id.toString()
-                });
+
+            if(userAccount && userAccount.group && userAccount.group.businessUnit){
+                groupItems.push(userAccount.group._id.toString());
+                businessItems.push(userAccount.group.businessUnit);
             }
+
+
+            if(userAccount.userref){
+                const userGroups = await UserGroup.find({
+                    company: company,
+                    tenant: tenant,
+                    supervisors:userAccount.userref
+                }).select('businessUnit').lean();
+
+                userGroups.map((grp) => {
+                    groupItems.push(grp._id.toString());
+                    if (grp.businessUnit)
+                        businessItems.push(grp.businessUnit)
+                    return true;
+                });
+                if(userGroups&& Array.isArray(userGroups) && userGroups.length > 0){
+                    folderMatchQuery.$or.push({
+                        allow_groups: {$in: userGroups.map(grp => grp._id.toString())}
+                    });
+                }
+
+
+            }
+
+
 
             const articleCategory = await ArticleCategory.findOne({_id: id, company: company, tenant: tenant})
                 .populate({
@@ -1071,11 +1165,12 @@ module.exports.ArticleService = class ArticleService {
                     }
                 })
                 .populate('author', 'firstname lastname username avatar')
-                .populate('allow_business_units', 'unitName').lean();
+                .lean();
 
+            //.populate('allow_business_units', 'unitName')
             if(articleCategory && userAccount && userAccount.group && userAccount.group.businessUnit){
                 if(articleCategory.allow_business_units.length == 0 ||(articleCategory.allow_business_units.filter(
-                        unit => unit.unitName === userAccount.group.businessUnit).length > 0)){
+                        unit =>  businessItems.indexOf(unit)  > -1).length > 0)){
                     jsonString = messageFormatter.FormatMessage(undefined, "Category retrieved successfully", true, articleCategory);
                     res.end(jsonString);
                 }else{
@@ -1112,23 +1207,43 @@ module.exports.ArticleService = class ArticleService {
         const msg = req.body;
         try {
 
-
-
+            let businessItems = [];
+            let groupItems = [];
             const userAccount = await UserAccount.findOne({
                 user: req.user.iss,
                 company: company,
                 tenant: tenant
-            }).select('user group').populate('group', 'name businessUnit').lean();
+            }).select('user  group userref').populate('group', 'name businessUnit');
 
+            if(userAccount && userAccount.group && userAccount.group.businessUnit){
+                groupItems.push(userAccount.group._id.toString());
+                businessItems.push(userAccount.group.businessUnit);
+            }
 
             let folderMatchQuery = {
                 $or : [{allow_groups : {$size: 0}}]
             }
 
-            if(userAccount&& userAccount.group){
-                folderMatchQuery.$or.push({
-                    allow_groups: userAccount.group._id.toString()
+            if(userAccount.userref){
+                const userGroups = await UserGroup.find({
+                    company: company,
+                    tenant: tenant,
+                    supervisors:userAccount.userref
+                }).select('businessUnit').lean();
+
+                userGroups.map((grp) => {
+                    groupItems.push(grp._id.toString());
+                    if (grp.businessUnit)
+                        businessItems.push(grp.businessUnit)
+                    return true;
                 });
+
+                if(userGroups&& Array.isArray(userGroups) && userGroups.length > 0){
+                    folderMatchQuery.$or.push({
+                        allow_groups: {$in: userGroups}
+                    });
+                }
+
             }
 
 
@@ -1159,11 +1274,12 @@ module.exports.ArticleService = class ArticleService {
                     }]
                 })
                 .populate('author', 'firstname lastname username avatar')
-                .populate('allow_business_units', 'unitName').lean();
+                .lean();
+            //.populate('allow_business_units', 'unitName')
 
             if(articleCategory && userAccount.group && userAccount.group.businessUnit){
                 if(articleCategory.allow_business_units.length == 0 ||(articleCategory.allow_business_units.filter(
-                        unit => unit.unitName === userAccount.group.businessUnit).length > 0)){
+                        unit =>  businessItems.indexOf(unit)  > -1).length > 0)){
                     jsonString = messageFormatter.FormatMessage(undefined, "Category retrieved successfully", true, articleCategory);
                     res.end(jsonString);
                 }else{
@@ -1200,7 +1316,26 @@ module.exports.ArticleService = class ArticleService {
                 user: req.user.iss,
                 company: company,
                 tenant: tenant
-            }).select('user group').populate('group', 'name businessUnit').lean();
+            }).select('user group userref').populate('group', 'name businessUnit').lean();
+
+            let groupItems = [];
+            if(userAccount.userref){
+                const userGroups = await UserGroup.find({
+                    company: company,
+                    tenant: tenant,
+                    supervisors:userAccount.userref
+                }).select('businessUnit').lean();
+
+                userGroups.map((grp) => {
+
+                    groupItems.push(grp._id.toString())
+                    return true;
+
+                });
+            }
+            if(userAccount && userAccount.group && userAccount.group.businessUnit){
+                groupItems.push(userAccount.group._id.toString());
+            }
 
             let query = {
                 company: company,
@@ -1214,8 +1349,8 @@ module.exports.ArticleService = class ArticleService {
 
             let andQuery;
 
-            if(userAccount && userAccount.group){
-                orQuery.$or.push({allow_groups : userAccount.group._id.toString()});
+            if(groupItems && Array.isArray(groupItems) && groupItems.length > -1){
+                orQuery.$or.push({allow_groups : {$in : groupItems}});
                 andQuery =
                     {
                         $and: [query,orQuery]
@@ -1258,13 +1393,36 @@ module.exports.ArticleService = class ArticleService {
                 user: req.user.iss,
                 company: company,
                 tenant: tenant
-            }).select('user group').populate('group', 'name businessUnit').lean();
+            }).select('user group userref').populate('group', 'name businessUnit').lean();
+
+            let groupItems = [];
+            if(userAccount.userref){
+                const userGroups = await UserGroup.find({
+                    company: company,
+                    tenant: tenant,
+                    supervisors:userAccount.userref
+                }).select('businessUnit').lean();
+
+                userGroups.map((grp) => {
+
+                    groupItems.push(grp._id.toString())
+                    return true;
+
+                });
+            }
+
+
+            if(userAccount && userAccount.group && userAccount.group.businessUnit){
+                groupItems.push(userAccount.group._id.toString());
+            }
+
+
 
             const articleFolder = await ArticleFolder.findOne({_id: id, company: company, tenant: tenant});
 
 
-            if(userAccount && articleFolder && userAccount.group){
-                if(articleFolder.allow_groups.length == 0 || (articleFolder.allow_groups.indexOf(userAccount._id) > -1)){
+            if(groupItems && groupItems.length > 0 && articleFolder && articleFolder.allow_groups){
+                if(articleFolder.allow_groups.length == 0 || (articleFolder.allow_groups.filter(grp => groupItems.indexOf(grp.toString()) > -1).length > 0)){
                     jsonString = messageFormatter.FormatMessage(undefined, "Folder retrieved successfully", true, articleFolder);
                     res.end(jsonString);
                 }else{
@@ -1307,7 +1465,31 @@ module.exports.ArticleService = class ArticleService {
                 user: req.user.iss,
                 company: company,
                 tenant: tenant
-            }).select('user group').populate('group', 'name businessUnit').lean();
+            }).select('user group userref').populate('group', 'name businessUnit').lean();
+
+            let groupItems = [];
+            if(userAccount.userref){
+                const userGroups = await UserGroup.find({
+                    company: company,
+                    tenant: tenant,
+                    supervisors:userAccount.userref
+                }).select('businessUnit').lean();
+
+                userGroups.map((grp) => {
+
+                    groupItems.push(grp._id.toString())
+                    return true;
+
+                });
+            }
+
+
+            if(userAccount && userAccount.group && userAccount.group){
+                groupItems.push(userAccount.group._id.toString());
+            }
+
+
+
 
             const articleFolder = await ArticleFolder.findOne({_id: id, company: company, tenant: tenant})
                 .populate({
@@ -1330,9 +1512,9 @@ module.exports.ArticleService = class ArticleService {
                 .populate('allow_groups','name').lean();
 
 
-            if(userAccount && articleFolder && userAccount.group) {
+            if(groupItems && articleFolder && groupItems.length > 0 && articleFolder.allow_groups) {
                 if (articleFolder.allow_groups.length == 0 || (articleFolder.allow_groups.filter(
-                    grp => grp._id.toString() == userAccount.group._id.toString()
+                    grp => groupItems.indexOf(grp._id.toString()) > -1
                     ).length > 0)) {
                     jsonString = messageFormatter.FormatMessage(undefined, "Folder retrieved successfully", true, articleFolder);
                     res.end(jsonString);
@@ -1351,8 +1533,6 @@ module.exports.ArticleService = class ArticleService {
                 }
             }
 
-            jsonString = messageFormatter.FormatMessage(undefined, "Folder retrieved successfully", true, articleFolder);
-            res.end(jsonString);
 
         }catch(ex){
 
@@ -1494,13 +1674,12 @@ module.exports.ArticleService = class ArticleService {
                 user: req.user.iss,
                 company: company,
                 tenant: tenant
-            }).select('user group').populate('group', 'name businessUnit').lean();
+            }).select('user group userref').populate('group', 'name businessUnit').lean();
 
 
             const articleFolders = await ArticleFolder.find({articles:id}).lean();
             const ids = articleFolders.map(fd => fd._id);
             const articleCategory = await ArticleCategory.find({folders: {$in: ids}})
-                .populate('allow_business_units', 'unitName')
                 .populate({
                     path: 'folders',
                     model: ArticleFolder,
@@ -1508,6 +1687,7 @@ module.exports.ArticleService = class ArticleService {
                     select: 'allow_groups'})
                 .lean();
 
+            //.populate('allow_business_units', 'unitName')
 
             if(articleFolders.length > 0) {
                 if(articleCategory.length > 0) {
@@ -1518,7 +1698,7 @@ module.exports.ArticleService = class ArticleService {
                         if(catItem.allow_business_units && catItem.allow_business_units.length > 0
                             && userAccount && userAccount.group && userAccount.group.businessUnit) {
 
-                            let allowCats = catItem.allow_business_units.filter(bux => bux.unitName == userAccount.group.businessUnit);
+                            let allowCats = catItem.allow_business_units.filter(bux => bux == userAccount.group.businessUnit);
                             if(allowCats && Array.isArray(allowCats) && allowCats.length > 0){
                                 ///////////////////category found////////////////////////////////
                                 if(catItem.folders && Array.isArray(catItem.folders) && catItem.folders.length > 0){
