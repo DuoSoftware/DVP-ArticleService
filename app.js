@@ -48,12 +48,6 @@ server.put('/DVP/API/:version/Category/:catid/BU',authorization({resource:"artic
 server.put('/DVP/API/:version/Folder/:folderid/Article/:articleid',authorization({resource:"article", action:"write"}), articleService.AddArticleToFolder);
 server.put('/DVP/API/:version/Folder/:folderid/Group',authorization({resource:"article", action:"write"}), articleService.AddGroupToFolder);
 
-
-server.put('/DVP/API/:version/Article/:articleid/Comment',authorization({resource:"article", action:"write"}), articleService.AddCommentToArticle);
-server.put('/DVP/API/:version/Article/:articleid/Vote',authorization({resource:"article", action:"write"}), articleService.AddVoteToArticle);
-server.put('/DVP/API/:version/Vote/:vid',authorization({resource:"article", action:"write"}), articleService.UpdateVoteOfTheArticle);
-
-
 server.put('/DVP/API/:version/Article/:articleid/Tag',authorization({resource:"article", action:"write"}), articleService.AddTagToArticle);
 server.put('/DVP/API/:version/Article/:articleid/SearchTag',authorization({resource:"article", action:"write"}), articleService.AddSearchTagToArticle);
 server.put('/DVP/API/:version/Article/:articleid/SearchMeta',authorization({resource:"article", action:"write"}), articleService.AddSearchMetaToArticle);
@@ -74,7 +68,7 @@ server.put('/DVP/API/:version/Article/:id/Enable/:enabled',authorization({resour
 
 //////////////////////////////////////////get methods/////////////////////////////////////////////////////////////////////////////
 server.get('/DVP/API/:version/Tags',authorization({resource:"article", action:"read"}), articleService.GetTags);
-server.get('/DVP/API/:version/Categories',authorization({resource:"article", action:"read"}), articleService.GetCategories);
+
 server.get('/DVP/API/:version/Category/:id',authorization({resource:"article", action:"read"}), articleService.GetCategory);
 server.get('/DVP/API/:version/FullCategory/:id',authorization({resource:"article", action:"read"}), articleService.GetFullCategory);
 server.get('/DVP/API/:version/Folders',authorization({resource:"article", action:"read"}), articleService.GetFolders);
@@ -83,10 +77,16 @@ server.get('/DVP/API/:version/FullFolder/:id',authorization({resource:"article",
 server.get('/DVP/API/:version/Articles',authorization({resource:"article", action:"read"}), articleService.GetArticles);
 server.get('/DVP/API/:version/Articles/ByTag',authorization({resource:"article", action:"read"}), articleService.GetArticlesByTags);
 server.get('/DVP/API/:version/Article/:id',authorization({resource:"article", action:"read"}), articleService.GetArticle);
+
+////////////////////////////////////////////////////agent + supervisor/////////////////////////////////////////////////////////////
+server.get('/DVP/API/:version/Categories',authorization({resource:"article", action:"read"}), articleService.GetCategories);
+
+/////////////////////////////////////////////////////////////agent methods//////////////////////////////////////////////////////////////////////
 server.get('/DVP/API/:version/SearchArticle/:text',authorization({resource:"article", action:"read"}), articleService.SearchArticle);
 server.get('/DVP/API/:version/FullArticle/:id',authorization({resource:"article", action:"read"}), articleService.GetFullArticle);
-
-
+server.put('/DVP/API/:version/Article/:articleid/Comment',authorization({resource:"article", action:"write"}), articleService.AddCommentToArticle);
+server.put('/DVP/API/:version/Article/:articleid/Vote',authorization({resource:"article", action:"write"}), articleService.AddVoteToArticle);
+server.put('/DVP/API/:version/Vote/:vid',authorization({resource:"article", action:"write"}), articleService.UpdateVoteOfTheArticle);
 server.get('/DVP/API/:version/ViewCategory/:id',authorization({resource:"article", action:"read"}), articleService.GetFullCategoryWithArticles);
 
 

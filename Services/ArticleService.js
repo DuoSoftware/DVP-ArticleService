@@ -1619,7 +1619,27 @@ module.exports.ArticleService = class ArticleService {
         const msg = req.body;
         try {
 
-            const article = await Article.findOne({_id: id, company: company, tenant: tenant});
+
+            const article = await Article.findOne({_id: id, company: company, tenant: tenant})
+                .populate('author', 'firstname lastname username avatar')
+                .populate({
+                    path : 'comments',
+                    model: ArticleComment,
+                    populate: {
+                        path: 'author',
+                        model: 'User',
+                        select: 'firstname lastname username avatar'
+                    }
+                })
+                .populate({
+                    path : 'votes',
+                    model: ArticleVote,
+                    populate: {
+                        path: 'author',
+                        model: 'User',
+                        select: 'firstname lastname username avatar'
+                    }
+                });
             jsonString = messageFormatter.FormatMessage(undefined, "Article retrieved successfully", true, article);
             res.end(jsonString);
 
