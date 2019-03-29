@@ -975,7 +975,7 @@ module.exports.ArticleService = class ArticleService {
 
         try {
             const articleCategory = await ArticleCategory.find(andQuery)
-                .populate('author', 'firstname lastname username avatar')
+                .populate('author', 'firstname lastname username avatar').lean();
                 //.populate('allow_business_units', 'unitName');
 
             // let cats = [];
@@ -1259,6 +1259,7 @@ module.exports.ArticleService = class ArticleService {
                         select: 'firstname lastname username avatar'
                     },{
                         path : 'articles',
+                        match: {enabled: 'true'},
                         model: Article,
                         select: 'title description author votes created_at tags',
                         populate: [{
@@ -1664,6 +1665,7 @@ module.exports.ArticleService = class ArticleService {
                 {
                     $text: {$search: req.params.text},
                     company: company,
+                    enabled: true,
                     tenant: tenant
                 }
             ).limit(10);
@@ -1832,7 +1834,7 @@ module.exports.ArticleService = class ArticleService {
 
 
 
-            const article = await Article.findOne({_id: id, company: company, tenant: tenant})
+            const article = await Article.findOne({_id: id, company: company, tenant: tenant,enabled: true})
                 .populate('author', 'firstname lastname username avatar')
                 .populate({
                     path : 'comments',
