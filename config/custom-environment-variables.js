@@ -46,7 +46,7 @@ module.exports = {
     {
         "vdomain": "LB_FRONTEND",
         "domain": "HOST_NAME",
-        "port": "HOST_LITETICKET_PORT",
+        "port": "HOST_ARTICLESERVICE_PORT",
         "version": "HOST_VERSION"
     },
 
