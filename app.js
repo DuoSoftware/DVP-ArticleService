@@ -77,8 +77,6 @@ server.get('/DVP/API/:version/FullFolder/:id',authorization({resource:"article",
 server.get('/DVP/API/:version/Articles',authorization({resource:"article", action:"read"}), articleService.GetArticles);
 server.get('/DVP/API/:version/Articles/ByTag',authorization({resource:"article", action:"read"}), articleService.GetArticlesByTags);
 server.get('/DVP/API/:version/Article/:id',authorization({resource:"article", action:"read"}), articleService.GetArticle);
-
-////////////////////////////////////////////////////agent + supervisor/////////////////////////////////////////////////////////////
 server.get('/DVP/API/:version/Categories',authorization({resource:"article", action:"read"}), articleService.GetCategories);
 
 /////////////////////////////////////////////////////////////agent methods//////////////////////////////////////////////////////////////////////
@@ -88,6 +86,7 @@ server.put('/DVP/API/:version/Article/:articleid/Comment',authorization({resourc
 server.put('/DVP/API/:version/Article/:articleid/Vote',authorization({resource:"article", action:"write"}), articleService.AddVoteToArticle);
 server.put('/DVP/API/:version/Vote/:vid',authorization({resource:"article", action:"write"}), articleService.UpdateVoteOfTheArticle);
 server.get('/DVP/API/:version/ViewCategory/:id',authorization({resource:"article", action:"read"}), articleService.GetFullCategoryWithArticles);
+server.get('/DVP/API/:version/ViewCategories',authorization({resource:"article", action:"read"}), articleService.GetViewCategories);
 
 
 
