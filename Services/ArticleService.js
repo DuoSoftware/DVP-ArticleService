@@ -1274,8 +1274,8 @@ module.exports.ArticleService = class ArticleService {
                 .lean();
 
             //.populate('allow_business_units', 'unitName')
-            if(articleCategory && userAccount && userAccount.group && userAccount.group.businessUnit){
-                if(articleCategory.allow_business_units.length == 0 ||(articleCategory.allow_business_units.filter(
+            if(articleCategory && userAccount && businessItems && businessItems.length > 0){
+                if(articleCategory.allow_business_units.length> 0 ||(articleCategory.allow_business_units.filter(
                         unit =>  businessItems.indexOf(unit)  > -1).length > 0)){
                     jsonString = messageFormatter.FormatMessage(undefined, "Category retrieved successfully", true, articleCategory);
                     res.end(jsonString);
