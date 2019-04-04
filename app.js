@@ -46,6 +46,7 @@ server.post('/DVP/API/:version/Article',authorization({resource:"article", actio
 server.put('/DVP/API/:version/Category/:catid/Folder/:folderid',authorization({resource:"article", action:"write"}), articleService.AddFolderToCategory);
 server.put('/DVP/API/:version/Category/:catid/BU',authorization({resource:"article", action:"write"}), articleService.AddBuToCategory);
 server.put('/DVP/API/:version/Folder/:folderid/Article/:articleid',authorization({resource:"article", action:"write"}), articleService.AddArticleToFolder);
+server.del('/DVP/API/:version/Folder/:folderid/Article/:articleid',authorization({resource:"article", action:"write"}), articleService.RemoveArticleFromFolder);
 server.put('/DVP/API/:version/Folder/:folderid/Group',authorization({resource:"article", action:"write"}), articleService.AddGroupToFolder);
 
 server.put('/DVP/API/:version/Article/:articleid/Tag',authorization({resource:"article", action:"write"}), articleService.AddTagToArticle);
@@ -87,6 +88,10 @@ server.put('/DVP/API/:version/Article/:articleid/Vote',authorization({resource:"
 server.put('/DVP/API/:version/Vote/:vid',authorization({resource:"article", action:"write"}), articleService.UpdateVoteOfTheArticle);
 server.get('/DVP/API/:version/ViewCategory/:id',authorization({resource:"article", action:"read"}), articleService.GetFullCategoryWithArticles);
 server.get('/DVP/API/:version/ViewCategories',authorization({resource:"article", action:"read"}), articleService.GetViewCategories);
+
+
+
+server.get('/DVP/API/:version/Sections/Article/:id',authorization({resource:"article", action:"read"}), articleService.GetAssignedSectionsOfArticle);
 
 
 

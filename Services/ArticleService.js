@@ -70,14 +70,24 @@ module.exports.ArticleService = class ArticleService {
 
             logger.log(`Article saved and setting article to category ${req.body.folder}`);
 
-            if(req.body.folder){
-
-                let _folder = await ArticleFolder.findOneAndUpdate({
-                    company: company,
-                    tenant: tenant,
-                    _id: req.body.folder
-                },{$addToSet:{articles: _article._id}})
+            var query = {
+                _id:{$in:[]},
+                company: company,
+                tenant: tenant,
             }
+
+            if(req.body.folder && req.body.folder.length>0){
+
+                    query._id.$in=(req.body.folder);
+
+            }
+
+            //let folderset = await ArticleFolder.find(query);
+            let setArticle = await ArticleFolder.update(query, {$addToSet:
+                    {
+                        articles: _article._id
+                    }
+            },{ multi: true });
 
             jsonString = messageFormatter.FormatMessage(undefined, "Article saved successfully", true, _article);
             res.end(jsonString);
@@ -239,6 +249,43 @@ module.exports.ArticleService = class ArticleService {
                     tenant: tenant,
                     _id: req.params.folderid
                 },{$addToSet:{articles: _article.id}})
+                jsonString = messageFormatter.FormatMessage(undefined, "Article set to Folder successfully", true, _folder);
+            }else{
+                logger.error(`Folder not found and setting folder to category ${req.params.folderid}`);
+            }
+
+
+
+            res.end(jsonString);
+
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Article set to Folder Failed", false, undefined);
+            res.end(jsonString);
+        }
+
+    }
+    async RemoveArticleFromFolder(req,res){
+
+        let company = parseInt(req.user.company);
+        let tenant = parseInt(req.user.tenant);
+        let jsonString;
+
+        const msg = req.body;
+        try {
+
+            const _article = await Article.findOne({_id: req.params.articleid, company: company, tenant: tenant});
+
+
+            if(_article && req.params.folderid){
+
+                logger.log(`Article found and setting article to folder ${req.params.folderid}`);
+                let _folder = await ArticleFolder.findOneAndUpdate({
+                    company: company,
+                    tenant: tenant,
+                    _id: req.params.folderid
+                },{$pull:{articles: _article.id}})
                 jsonString = messageFormatter.FormatMessage(undefined, "Article set to Folder successfully", true, _folder);
             }else{
                 logger.error(`Folder not found and setting folder to category ${req.params.folderid}`);
@@ -811,6 +858,7 @@ module.exports.ArticleService = class ArticleService {
                 company: company,
                 tenant: tenant
             },articleInstance,{new: true});
+
 
             jsonString = messageFormatter.FormatMessage(undefined, "Article saved successfully", true, article);
             res.end(jsonString);
@@ -2076,5 +2124,131 @@ module.exports.ArticleService = class ArticleService {
         }
 
     }
+
+    async GetAssignedSectionsOfArticle(req, res){
+
+
+        try
+        {
+            let company = parseInt(req.user.company);
+            let tenant = parseInt(req.user.tenant);
+            let articleId= req.params.id;
+            let jsonString;
+            let query = {
+                company: company,
+                tenant: tenant,
+                enabled: true,
+                articles:{$in:[articleId]}
+            };
+
+            const sections = await ArticleFolder.find(query);
+            jsonString = messageFormatter.FormatMessage(undefined, "Sections retrieved successfully", true, sections);
+            res.end(jsonString);
+        }
+        catch (e) {
+            jsonString = messageFormatter.FormatMessage(e, "Sections search successfully", false, undefined);
+            res.end(jsonString);
+        }
+
+
+
+
+        /*
+
+
+        const msg = req.body;
+
+        let businessItems = [];
+        const userAccount = await UserAccount.findOne({
+            user: req.user.iss,
+            company: company,
+            tenant: tenant
+        }).select('user  group userref').populate('group', 'name businessUnit');
+
+
+        let groupItems = [];
+        if(userAccount.userref){
+            const userGroups = await UserGroup.find({
+                company: company,
+                tenant: tenant,
+                supervisors:userAccount.userref
+            }).select('businessUnit').lean();
+
+            userGroups.map((grp) => {
+                groupItems.push(grp._id.toString());
+                if (grp.businessUnit)
+                    businessItems.push(grp.businessUnit)
+                return true;
+            });
+
+        }
+
+        if(userAccount && userAccount.group && userAccount.group.businessUnit){
+            businessItems.push(userAccount.group.businessUnit);
+        }
+
+        //businessItems
+
+
+
+        let orQuery = {$or: [ {
+                allow_business_units: {
+                    $size: 0
+                }}]};
+
+        let andQuery;
+
+        if(businessItems && Array.isArray(businessItems) && businessItems.length > 0){
+
+            orQuery.$or.push({allow_business_units : {$in: businessItems}});
+            andQuery =
+                {
+                    $and: [query,orQuery]
+                };
+        }else{
+
+            query.allow_business_units = {
+                $size: 0
+            }
+
+            andQuery = query;
+        }
+
+
+        try {
+            const articleCategory = await ArticleCategory.find(andQuery)
+                .populate('author', 'firstname lastname username avatar').lean();
+            //.populate('allow_business_units', 'unitName');
+
+            // let cats = [];
+            //
+            // if(articleCategory && Array.isArray(articleCategory) && articleCategory.length > 0)
+            // {
+            //
+            //     cats = articleCategory.reduce((catArr, cat) => {
+            //         if(cat.allow_business_units.length == 0 ||(cat.allow_business_units.filter(
+            //                 unit => businessItems.indexOf(unit.unitName) > -1).length > 0)){
+            //             catArr.push(cat);
+            //
+            //         }else{
+            //            logger.info(`This business use has no permission ${cat.title}`);
+            //         }
+            //         return catArr;
+            //     },[]);
+            //
+            //
+            // }
+
+            jsonString = messageFormatter.FormatMessage(undefined, "Categories retrieved successfully", true, articleCategory);
+            res.end(jsonString);
+
+        }catch(ex){
+
+            jsonString = messageFormatter.FormatMessage(ex, "Categories retrieve Failed", false, undefined);
+            res.end(jsonString);
+        }*/
+
+
+    };
 
 }
