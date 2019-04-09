@@ -4,7 +4,6 @@ RUN git clone -b $VERSION_TAG https://github.com/DuoSoftware/DVP-ArticleService.
 RUN cd /usr/local/src/articleservice
 WORKDIR /usr/local/src/articleservice
 RUN npm install
-COPY . .
 EXPOSE 3635
 CMD [ "node", "/usr/local/src/articleservice/app.js" ]
 
